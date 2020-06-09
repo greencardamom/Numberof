@@ -6,9 +6,11 @@ MIT License
 
 Info
 ========
-Numberof is a Wikipedia bot that maintains [Commons:Data:Wikipedia_statistics/data.tab](https://commons.wikimedia.org/wiki/Data:Wikipedia_statistics/data.tab) and [Commons:Data:Wikipedia_statistics/rank/*.tab](https://commons.wikimedia.org/wiki/Special:PrefixIndex?prefix=Wikipedia+statistics%2Frank%2F&namespace=486)
+Numberof is a Wikipedia bot that maintains 
+* [Commons:Data:Wikipedia_statistics/data.tab](https://commons.wikimedia.org/wiki/Data:Wikipedia_statistics/data.tab) 
+* [Commons:Data:Wikipedia_statistics/rank/*.tab](https://commons.wikimedia.org/wiki/Special:PrefixIndex?prefix=Wikipedia+statistics%2Frank%2F&namespace=486)
 
-..these files are used by [{{Wikipedia rank by size}}](https://en.wikipedia.org/wiki/Template:Wikipedia_rank_by_size), [{{NUMBEROF}}](https://en.wikipedia.org/wiki/Template:NUMBEROF) and [Module:NUMBEROF](https://en.wikipedia.org/wiki/Module:NUMBEROF) across many wiki languages and projects.
+..these pages are used by [{{Wikipedia rank by size}}](https://en.wikipedia.org/wiki/Template:Wikipedia_rank_by_size), [{{NUMBEROF}}](https://en.wikipedia.org/wiki/Template:NUMBEROF) and [Module:NUMBEROF](https://en.wikipedia.org/wiki/Module:NUMBEROF) across many wiki languages and projects.
 
 Dependencies 
 ========
@@ -19,7 +21,7 @@ Dependencies
 Installation
 ========
 
-1. Install BotWikiAwk and follow setup instructions. Add your OAuth credentials to wikiget. OAuth setup is easier/faster than it sounds follow the [EDITSETUP](https://github.com/greencardamom/Wikiget/blob/master/EDITSETUP) instructions.
+1. Install BotWikiAwk following setup instructions. Add OAuth credentials to wikiget see the [EDITSETUP](https://github.com/greencardamom/Wikiget/blob/master/EDITSETUP) steps.
 
 2. Clone Numberof. For example:
 	git clone https://github.com/greencardamom/Numberof
