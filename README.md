@@ -19,7 +19,7 @@ Dependencies
 Installation
 ========
 
-1. Install BotWikiAwk and follow setup instructions. Add your OAuth credentials to wikiget. OAuth setup is easier/faster than it sounds follow the EDITSETUP file instructions.
+1. Install BotWikiAwk and follow setup instructions. Add your OAuth credentials to wikiget. OAuth setup is easier/faster than it sounds follow the [EDITSETUP](https://github.com/greencardamom/Wikiget/blob/master/EDITSETUP) instructions.
 
 2. Clone Numberof. For example:
 	git clone https://github.com/greencardamom/Numberof
