@@ -6,20 +6,20 @@ MIT License
 
 Info
 ========
-Numberof is a Wikipedia bot to maintain [:Commons:Data:Wikipedia_statistics/data.tab](https://commons.wikimedia.org/wiki/Data:Wikipedia_statistics/data.tab) and [:Commons:Data:Wikipedia_statistics/rank/*.tab](https://commons.wikimedia.org/wiki/Special:PrefixIndex?prefix=Wikipedia+statistics%2Frank%2F&namespace=486)
+Numberof is a Wikipedia bot that maintains [Commons:Data:Wikipedia_statistics/data.tab](https://commons.wikimedia.org/wiki/Data:Wikipedia_statistics/data.tab) and [Commons:Data:Wikipedia_statistics/rank/*.tab](https://commons.wikimedia.org/wiki/Special:PrefixIndex?prefix=Wikipedia+statistics%2Frank%2F&namespace=486)
 
-..which is used by [{{Wikipedia rank by size}}](https://en.wikipedia.org/wiki/Template:Wikipedia_rank_by_size), [{{NUMBEROF}}](https://en.wikipedia.org/wiki/Template:NUMBEROF) and [Module:NUMBEROF](https://en.wikipedia.org/wiki/Module:NUMBEROF) across many wiki languages and projects.
+..these files are used by [{{Wikipedia rank by size}}](https://en.wikipedia.org/wiki/Template:Wikipedia_rank_by_size), [{{NUMBEROF}}](https://en.wikipedia.org/wiki/Template:NUMBEROF) and [Module:NUMBEROF](https://en.wikipedia.org/wiki/Module:NUMBEROF) across many wiki languages and projects.
 
 Dependencies 
 ========
 * GNU Awk 4.1+
 * [BotWikiAwk](https://github.com/greencardamom/BotWikiAwk) (version Jan 2019 +)
-* A bot user with bot permissions on Commons
+* A bot User account with bot permissions on Commons
 
 Installation
 ========
 
-1. Install BotWikiAwk and follow setup instructions. Add your OAuth credentials to wikiget (OAuth setup is easier than it sounds)
+1. Install BotWikiAwk and follow setup instructions. Add your OAuth credentials to wikiget. OAuth setup is easier/faster than it sounds follow the EDITSETUP file instructions.
 
 2. Clone Numberof. For example:
 	git clone https://github.com/greencardamom/Numberof
@@ -35,14 +35,14 @@ Installation
 			Agent = UserPage " (ask me about " BotName ")"
 			break
 
-	C. Add a new entry in section #10 (inside the statement if(BotName != "makebot") {} )
+	C. Add a new entry in section #10 
 
 		if(BotName !~ /numberof/) {
 			delete Config
 			readprojectcfg()
 		}
 
-4. Set ~/numberof/numberof.awk to mode 750, set the first shebang line to location of awk
+4. Set ~/Numberof/numberof.awk to mode 750, and change the first shebang line to the location of awk on your system
 
 Running
 ========
