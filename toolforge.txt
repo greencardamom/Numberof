@@ -1,0 +1,19 @@
+Notes for use on Toolforge:
+
+ 1. Make a directory to hold stdio and stderr 
+     mkdir stdioer
+
+ 2. Silence bot's default logging on success
+     ln -s /dev/null logdiscovered
+
+== Running ==
+
+One-off run:
+
+rm stdioer/oneoff.*
+jsub -once -N "oneoff" -e /data/project/botwikiawk/numberof/stdioer/oneoff.stderr -o /data/project/botwikiawk/numberof/stdioer/oneoff.stdout -wd /data/project/botwikiawk/numberof no.awk
+
+Run via cron:
+
+25 2,8,14,20 * * * /usr/bin/jsub -once -quiet -N no.awk -l mem_free=25M,h_vmem=50M -e /data/project/botwikiawk/numberof/stdioer/numberof.stderr -o /data/project/botwikiawk/numberof/stdioer/numberof.stdout -v "AWKPATH=.:/data/project/botwikiawk/BotWikiAwk/lib" -v "PATH=/sbin:/bin:/usr/sbin:/usr/local/bin:/usr/bin:/data/project/botwikiawk/BotWikiAwk/bin" -wd /data/project/botwikiawk/numberof /data/project/botwikiawk/numberof/no.awk
+

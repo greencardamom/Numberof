@@ -1,0 +1,17 @@
+{
+    "batchcomplete": "",
+    "query": {
+        "statistics": {
+            "pages": 0,
+            "articles": 0,
+            "edits": 0,
+            "images": 0,
+            "users": 0,
+            "activeusers": 0,
+            "admins": 0,
+            "jobs": 0,
+            "queued-massmessages": 0
+        }
+    }
+}
+
