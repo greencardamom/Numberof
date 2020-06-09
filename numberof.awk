@@ -18,7 +18,7 @@ BEGIN {
 BEGIN {
 
   Home = "/data/project/botwikiawk/numberof/"
-  email = "dfgf56greencard93@nym.hush.com"
+  email = ""
   data  = Home "data.tab"   # statistics
   datac = Home "datac.tab"  # configuration
   datar = Home "datar.tab"  # rankings
