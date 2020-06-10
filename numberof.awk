@@ -15,42 +15,9 @@ BEGIN {
 @include "library"
 @include "json"
 
-BEGIN {
-
-  Home = "/data/project/botwikiawk/numberof/"
-  email = ""
-  data  = Home "data.tab"   # statistics
-  datac = Home "datac.tab"  # configuration
-  datar = Home "datar.tab"  # rankings
-  apitail = "&format=json&formatversion=2&maxlag=4"
-
-  # 1-off special sites with no language sub-domains
-  specials = "meta=wikimedia&commons=wikimedia&foundation=wikimedia&wikimania=wikimedia&wikitech=wikimedia&donate=wikimedia&species=wikimedia"
-
-  # Set to 0 and it won't upload to Commons, for testing
-  doupload = 1
-
-  # set to "commons" and it will read conf.tab on Commons .. otherwise "api" generates from API:SiteMatrix
-  #  . determined by enwiki Template:NUMBEROF/conf
-  ReadConfFrom = getconf()
-
-  # an empty json template
-  if( ! checkexists(Home "apiclosed.json")) {
-      print "Unable to find " Home "apiclosed.json"
-      exit
-  }
-
-  dataconfig()    # create what used to be Data:Wikipedia_statistics/config.tab via API:SiteMatrix
-  datatab()       # create Data:Wikipedia_statistics/data.tab
-  dataranktab()   # create Data:Wikipedia_statistics/datarank.tab
-
-  # See enwiki Template:NUMBEROF/conf
-  sys2var(Exe["cp"] " " shquote(datac) " " shquote("/data/project/botwikiawk/www/static/config.tab.json") )
-
-}
 
 #
-# Generate a number of tabs
+# Generate n-number of tabs
 #
 function t(n, r,i) {
   for(i = 1; i <= n; i++)
@@ -65,14 +32,14 @@ function getpage(s,status,  fp,i) {
 
   for(i = 1; i <= 10; i++) {
       if(i == 2 && status ~ "closed")          # If closed site MW API may not have data available..
-          return readfile(Home "apiclosed.json") # Return manufactured JSON with data values of 0
+          return readfile(G["home"] "apiclosed.json") # Return manufactured JSON with data values of 0
       fp = sys2var(s)
       if(! empty(fp) && fp ~ "(schema|statistics|sitematrix)")
           return fp
       sleep(30)
   }
 
-  sys2var(Exe["mailx"] " -s \"NOTICE: Numberof failed to getpage(" s ")\" " email " < /dev/null")
+  sys2var(Exe["mailx"] " -s \"NOTICE: Numberof failed to getpage(" s ")\" " G["email"] " < /dev/null")
   exit
 
 }
@@ -125,18 +92,19 @@ function jsonhead(description, sources, header, dataf,  c,i,a,b) {
 
 }
 
+
 #
 # Generate conf.tab
 #   see files sitematrix.json and sitematrix.awkjson for example layout
 #
-function dataconfig(  a,i,s,sn,jsona,configfp,language,site,status,countofsites,desc,source,header) {
+function dataconfig(datac,  a,i,s,sn,jsona,configfp,language,site,status,countofsites,desc,source,header) {
 
   desc   = "Configuration for Template:Numberof - This page is for manual testing. It is not actively updated with new info."
   source = "N/A"
   header = "language=string&project=string&status=string"
   jsonhead(desc, source, header, datac)
 
-  configfp = getpage(Exe["wget"] " -q -O- " shquote("https://en.wikipedia.org/w/api.php?action=sitematrix" apitail), "")
+  configfp = getpage(Exe["wget"] " -q -O- " shquote("https://en.wikipedia.org/w/api.php?action=sitematrix" G["apitail"]), "")
   if(query_json(configfp, jsona) >= 0) {
 
       for(i = 0; i <= jsona["sitematrix","count"]; i++) {
@@ -160,7 +128,7 @@ function dataconfig(  a,i,s,sn,jsona,configfp,language,site,status,countofsites,
       }
 
       # specials
-      s = split(specials, a, /[&]/)
+      s = split(G["specials"], a, /[&]/)
       for(i = 1; i <= s; i++) {
           split(a[i], b, /[=]/)
           printf t(2) "[\"" b[1] "\",\"" b[2] "\",\"active\"]" >> datac
@@ -170,88 +138,19 @@ function dataconfig(  a,i,s,sn,jsona,configfp,language,site,status,countofsites,
 
   }
   else {
-      sys2var(Exe["mailx"] " -s \"NOTICE: Numberof failed in dataconfig()\" " email " < /dev/null")
+      sys2var(Exe["mailx"] " -s \"NOTICE: Numberof failed in dataconfig()\" " G["email"] " < /dev/null")
       exit
   }
 
-  print "\n\t]" >> datac
-  print "}" >> datac
-  close(data)
-
-}
-
-#
-# Generate rank pages: Data:Wikipedia_statistics/rank/wikinews.tab, wikivoyage.tab etc..
-#   depends on TR[] populated in datatab() which runs first
-#
-function dataranktab( c,i,s,si,k,siteT,siteU,site,stat,rank,NTT,NTA,desc,source,header) {
-
-  s = split("wikipedia|wikisource|wikibooks|wikiquote|wikivoyage|wikinews|wikiversity|wiktionary", site, "|")
-
-  for(si = 1; si <= s; si++) {
-
-      desc   = toupper(substr(site[si],1,1)) tolower(substr(site[si],2)) " Site Rankings. Includes active sites for *." site[si] ".org - Last update: " sys2var(Exe["date"] " \"+%c\"")
-      source = "Data source: Calculated from [[Data:Wikipedia_statistics/data.tab]] and posted by Toolforge bot /data/project/botwikiawk/numberof (by [[:en:User:GreenC]]) - This page is generated auto, manual changes will be overwritten."
-      header = "site=string&activeusers=number&admins=number&articles=number&edits=number&files=number&pages=number&users=number"
-      jsonhead(desc, source, header, datar)
-
-      delete NTA
-      c = split("activeusers|admins|articles|edits|images|pages|users", stat, "|")
-
-      # Totals active only - populated by datatab()
-
-      for(i = 1; i <= c; i++) {
-
-          delete NTT
-          rank = 0
-
-          PROCINFO["sorted_in"] = "@unsorted"
-          for(siteT in TR) {
-              if(siteT == site[si]) {
-                  for(siteU in TR[siteT]) {
-                      if(siteU ~ /^total/) continue
-                      NTT[siteU] = TR[siteT][siteU][stat[i]]
-                  }
-              }
-          }
-
-          PROCINFO["sorted_in"] = "@val_type_desc" # sort order largest to smallest number
-          for(siteU in NTT) {
-              rank++
-              NTA[siteU][stat[i]] = rank
-          }
-      }
-
-      # Ranking active sites only
-
-      k = 0
-      PROCINFO["sorted_in"] = "@ind_str_asc" # sort order a->z
-      for(siteU in NTA) {
-          if(++k != 1) print "," >> datar
-          printf t(2) "[\"" siteU "\"," >> datar
-          for(i = 1; i <= c; i++) {
-              printf NTA[siteU][stat[i]] >> datar
-              if(i != c) printf "," >> datar
-          }
-          printf "]" >> datar
-      }
-
-      print "\n\t]" >> datar
-      print "}" >> datar
-      close(datar)
-
-      if(doupload)
-          upload(readfile(datar), "Data:Wikipedia statistics/rank/" site[si] ".tab", "Update statistics", Home "log", BotName, "commons", "wikimedia")
-
-      PROCINFO["sorted_in"] = "@unsorted"
-  }
+  print "\n\t]\n}" >> datac
+  close(datac)
 
 }
 
 #
 # Generate data.tab statistics
 #
-function datatab( c,i,cfgfp,k,lang,site,status,statsfp,jsona,jsonb,stat,desc,source,header) {
+function datatab(data,  c,i,cfgfp,k,lang,site,status,statsfp,jsona,jsonb,stat,desc,source,header) {
 
   desc = "Wikipedia Site Statistics. Last update: " sys2var(Exe["date"] " \"+%c\"")
   source = "Data source: [[:mw:API:Siteinfo]] posted by Toolforge bot /data/project/botwikiawk/numberof (by [[:en:User:GreenC]]) - This page is generated auto, manual changes will be overwritten."
@@ -259,8 +158,8 @@ function datatab( c,i,cfgfp,k,lang,site,status,statsfp,jsona,jsonb,stat,desc,sou
   jsonhead(desc, source, header, data)
 
   # Get the configuration JSON
-  if(ReadConfFrom == "api")
-      cfgfp = readfile(datac)
+  if(G["confloc"] == "api")
+      cfgfp = readfile(G["datac"])
   else
       cfgfp = getpage(Exe["wikiget"] " -l commons -w 'Data:Wikipedia statistics/config.tab'")
 
@@ -272,7 +171,7 @@ function datatab( c,i,cfgfp,k,lang,site,status,statsfp,jsona,jsonb,stat,desc,sou
           site = jsona["data",k,"2"]
           status = jsona["data",k,"3"]
           if(lang == "total") continue
-          statsfp = getpage(Exe["wget"] " -q -O- " shquote("https://" lang "." site ".org/w/api.php?action=query&meta=siteinfo&siprop=statistics" apitail), status)
+          statsfp = getpage(Exe["wget"] " -q -O- " shquote("https://" lang "." site ".org/w/api.php?action=query&meta=siteinfo&siprop=statistics" G["apitail"]), status)
           if( query_json(statsfp, jsonb) >= 0) {
               printf t(2) "[\"" lang "." site "\"," >> data
               for(i = 1; i <= c; i++) {
@@ -328,14 +227,119 @@ function datatab( c,i,cfgfp,k,lang,site,status,statsfp,jsona,jsonb,stat,desc,sou
       printf TT[stat[i]] >> data
       if(i != c) printf "," >> data
   }
-  print "]" >> data
 
-  print "\t]" >> data
-  print "}" >> data
+  print "]\n\t]\n}" >> data
   close(data)
 
-  if(doupload)
-      upload(readfile(data), "Data:Wikipedia statistics/data.tab", "Update statistics", Home "log", BotName, "commons", "wikimedia")
+  if(G["doupload"])
+      upload(readfile(data), "Data:Wikipedia statistics/data.tab", "Update statistics", G["home"] "log", BotName, "commons", "wikimedia")
+
+}
+
+#
+# Generate rank pages: Data:Wikipedia_statistics/rank/wikinews.tab, wikivoyage.tab etc..
+#   depends on TR[] populated in datatab() which runs first
+#
+function dataranktab(datar,  c,i,s,si,k,siteT,siteU,site,stat,rank,NTT,NTA,desc,source,header) {
+
+  s = split("wikipedia|wikisource|wikibooks|wikiquote|wikivoyage|wikinews|wikiversity|wiktionary", site, "|")
+
+  for(si = 1; si <= s; si++) {
+
+      desc   = toupper(substr(site[si],1,1)) tolower(substr(site[si],2)) " Site Rankings. Includes active sites for *." site[si] ".org - Last update: " sys2var(Exe["date"] " \"+%c\"")
+      source = "Data source: Calculated from [[Data:Wikipedia_statistics/data.tab]] and posted by Toolforge bot /data/project/botwikiawk/numberof (by [[:en:User:GreenC]]) - This page is generated auto, manual changes will be overwritten."
+      header = "site=string&activeusers=number&admins=number&articles=number&edits=number&files=number&pages=number&users=number"
+      jsonhead(desc, source, header, datar)
+
+      delete NTA
+      c = split("activeusers|admins|articles|edits|images|pages|users", stat, "|")
+
+      # Totals active only - populated by datatab()
+
+      for(i = 1; i <= c; i++) {
+
+          delete NTT
+          rank = 0
+
+          PROCINFO["sorted_in"] = "@unsorted"
+          for(siteT in TR) {
+              if(siteT == site[si]) {
+                  for(siteU in TR[siteT]) {
+                      if(siteU ~ /^total/) continue
+                      NTT[siteU] = TR[siteT][siteU][stat[i]]
+                  }
+              }
+          }
+
+          PROCINFO["sorted_in"] = "@val_type_desc" # sort order largest to smallest number
+          for(siteU in NTT) {
+              rank++
+              NTA[siteU][stat[i]] = rank
+          }
+      }
+
+      # Ranking active sites only
+
+      k = 0
+      PROCINFO["sorted_in"] = "@ind_str_asc" # sort order a->z
+      for(siteU in NTA) {
+          if(++k != 1) print "," >> datar
+          printf t(2) "[\"" siteU "\"," >> datar
+          for(i = 1; i <= c; i++) {
+              printf NTA[siteU][stat[i]] >> datar
+              if(i != c) printf "," >> datar
+          }
+          printf "]" >> datar
+      }
+
+      print "\n\t]\n}" >> datar
+      close(datar)
+
+      if(G["doupload"])
+          upload(readfile(datar), "Data:Wikipedia statistics/rank/" site[si] ".tab", "Update statistics", G["home"] "log", BotName, "commons", "wikimedia")
+
+      PROCINFO["sorted_in"] = "@unsorted"
+  }
+
+}
+
+
+BEGIN {
+
+    _defaults = "home      = /data/project/botwikiawk/numberof/ \
+                 email     = user@example.com \
+                 version   = 1.0 \
+                 copyright = 2020"
+
+    asplit(G, _defaults, "[ ]*[=][ ]*", "[ ]{9,}")
+
+    G["datas"] = G["home"] "data.tab"
+    G["datac"] = G["home"] "datac.tab"
+    G["datar"] = G["home"] "datar.tab"
+    G["apitail"] = "&format=json&formatversion=2&maxlag=4"
+
+    # 1-off special sites with no language sub-domains
+    G["specials"] = "meta=wikimedia&commons=wikimedia&foundation=wikimedia&wikimania=wikimedia&wikitech=wikimedia&donate=wikimedia&species=wikimedia"
+
+    # set to "commons" and it will read conf.tab on Commons .. otherwise "api" generates from API:SiteMatrix
+    #  . determined by enwiki Template:NUMBEROF/conf
+    G["confloc"] = getconf()
+
+    # Set to 0 and it won't upload to Commons, for testing
+    G["doupload"] = 1
+
+    # an empty json template
+    if( ! checkexists(Home "apiclosed.json")) {
+        print "Unable to find " Home "apiclosed.json"
+        exit
+    }
+
+    dataconfig(G["datac"])    # create what used to be Data:Wikipedia_statistics/config.tab via API:SiteMatrix
+    datatab(G["datas"])       # create Data:Wikipedia_statistics/data.tab
+    dataranktab(G["datar"])   # create Data:Wikipedia_statistics/datarank.tab
+
+    # See enwiki Template:NUMBEROF/conf
+    sys2var(Exe["cp"] " " shquote(G["datac"]) " " shquote("/data/project/botwikiawk/www/static/config.tab.json") )
 
 }
 
