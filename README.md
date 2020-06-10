@@ -10,7 +10,7 @@ Numberof is a Wikipedia bot that maintains
 * [Commons:Data:Wikipedia_statistics/data.tab](https://commons.wikimedia.org/wiki/Data:Wikipedia_statistics/data.tab) 
 * [Commons:Data:Wikipedia_statistics/rank/*.tab](https://commons.wikimedia.org/wiki/Special:PrefixIndex?prefix=Wikipedia+statistics%2Frank%2F&namespace=486)
 
-..these pages are used by [{{Wikipedia rank by size}}](https://en.wikipedia.org/wiki/Template:Wikipedia_rank_by_size), [{{NUMBEROF}}](https://en.wikipedia.org/wiki/Template:NUMBEROF) and [Module:NUMBEROF](https://en.wikipedia.org/wiki/Module:NUMBEROF) across many wiki languages and projects.
+..which are pages used by [{{Wikipedia rank by size}}](https://en.wikipedia.org/wiki/Template:Wikipedia_rank_by_size), [{{NUMBEROF}}](https://en.wikipedia.org/wiki/Template:NUMBEROF) and [Module:NUMBEROF](https://en.wikipedia.org/wiki/Module:NUMBEROF) across many wiki languages and projects.
 
 Dependencies 
 ========
@@ -21,7 +21,7 @@ Dependencies
 Installation
 ========
 
-1. Install BotWikiAwk following setup instructions. Add OAuth credentials to wikiget see the [EDITSETUP](https://github.com/greencardamom/Wikiget/blob/master/EDITSETUP) steps.
+1. Install BotWikiAwk following setup instructions. Add OAuth credentials to wikiget, see the [EDITSETUP](https://github.com/greencardamom/Wikiget/blob/master/EDITSETUP) instructions.
 
 2. Clone Numberof. For example:
 	git clone https://github.com/greencardamom/Numberof
@@ -30,14 +30,14 @@ Installation
 
 	A. Set local URLs in section #1 and #2 
 
-	B. Create a new 'case' entry in section #3, adjust the Home bot path created in step 3:
+	B. Create a new 'case' entry in section #3, adjust the Home bot path created in step 2:
 
 		case "numberof":                                             # Custom bot paths
 			Home = "/data/project/projectname/numberof/"         # path ends in "/"
 			Agent = UserPage " (ask me about " BotName ")"
 			break
 
-	C. Add a new entry in section #10 
+	C. In section #10, replace the two lines starting with "delete Config" with the following:
 
 		if(BotName !~ /numberof/) {
 			delete Config
