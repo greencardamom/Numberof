@@ -1,7 +1,9 @@
 Numberof
 ===================
 by User:GreenC (en.wikipedia.org)
+
 June 2020
+
 MIT License
 
 Info
