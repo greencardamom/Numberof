@@ -37,6 +37,7 @@ Installation
 		case "numberof":                                             # Custom bot paths
 			Home = "/data/project/projectname/numberof/"         # path ends in "/"
 			Agent = UserPage " (ask me about " BotName ")"
+                        Engine = 3
 			break
 
 	C. In section #10, replace the two lines starting with "delete Config" with the following:
