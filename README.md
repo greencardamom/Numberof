@@ -40,14 +40,10 @@ Installation
 			Engine = 3
 			break
 
-	C. In section #10, replace the two lines starting with "delete Config" with the following:
 
-		if(BotName !~ /numberof/) {
-			delete Config
-			readprojectcfg()
-		}
+4. Set ~/Numberof/numberof.awk to mode 750, and change the first shebang line to the location of awk on your system.
 
-4. Set ~/Numberof/numberof.awk to mode 750, and change the first shebang line to the location of awk on your system
+5. In numberof.awk in the "BEGIN {" section is a place for you email address to send error reports to.
 
 Running
 ========
