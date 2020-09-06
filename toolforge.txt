@@ -1,6 +1,6 @@
 Notes for use on Toolforge:
 
- 1. Make a directory to hold stdio and stderr 
+ 1. Make a sub-directory to hold stdio and stderr 
      mkdir stdioer
 
  2. Silence BotWikiAwk's default logging on success
