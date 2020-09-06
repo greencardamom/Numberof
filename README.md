@@ -11,6 +11,7 @@ Info
 Numberof is a Wikipedia bot that maintains 
 * [Commons:Data:Wikipedia_statistics/data.tab](https://commons.wikimedia.org/wiki/Data:Wikipedia_statistics/data.tab) 
 * [Commons:Data:Wikipedia_statistics/rank/*.tab](https://commons.wikimedia.org/wiki/Special:PrefixIndex?prefix=Wikipedia+statistics%2Frank%2F&namespace=486)
+* [Commons:Data:Wikipedia_statistics/config.tab](https://commons.wikimedia.org/wiki/Data:Wikipedia_statistics/config.tab)
 
 ..which are pages used by [{{Wikipedia rank by size}}](https://en.wikipedia.org/wiki/Template:Wikipedia_rank_by_size), [{{NUMBEROF}}](https://en.wikipedia.org/wiki/Template:NUMBEROF) and [Module:NUMBEROF](https://en.wikipedia.org/wiki/Module:NUMBEROF) across many wiki languages and projects.
 
@@ -23,12 +24,14 @@ Dependencies
 Installation
 ========
 
-1. Install BotWikiAwk following setup instructions. Add OAuth credentials to wikiget, see the [EDITSETUP](https://github.com/greencardamom/Wikiget/blob/master/EDITSETUP) instructions.
+1. Install BotWikiAwk following setup instructions. 
 
-2. Clone Numberof. For example:
+2. Add OAuth credentials to wikiget (installed with BotWikiAwk), which is the utility that uploads pages to Commons. See [EDITSETUP](https://github.com/greencardamom/Wikiget/blob/master/EDITSETUP).
+
+3. Clone Numberof. For example:
 	git clone https://github.com/greencardamom/Numberof
 
-3. Edit ~/BotWikiAwk/lib/botwiki.awk
+4. Edit ~/BotWikiAwk/lib/botwiki.awk
 
 	A. Set local URLs in section #1 and #2 
 
@@ -41,9 +44,9 @@ Installation
 			break
 
 
-4. Set ~/Numberof/numberof.awk to mode 750, and change the first shebang line to the location of awk on your system.
+5. Set ~/Numberof/numberof.awk to mode 750, and change the first shebang line to the location of awk.
 
-5. In numberof.awk in the "BEGIN {" section is a place for you email address to send error reports to.
+6. In numberof.awk in the "BEGIN {" section is a place for an email address for error reports.
 
 Running
 ========
