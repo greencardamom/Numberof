@@ -11,7 +11,7 @@ Info
 Numberof is a Wikipedia bot that maintains 
 * [Commons:Data:Wikipedia_statistics/data.tab](https://commons.wikimedia.org/wiki/Data:Wikipedia_statistics/data.tab) 
 * [Commons:Data:Wikipedia_statistics/rank/*.tab](https://commons.wikimedia.org/wiki/Special:PrefixIndex?prefix=Wikipedia+statistics%2Frank%2F&namespace=486)
-* [Commons:Data:Wikipedia_statistics/config.tab](https://commons.wikimedia.org/wiki/Data:Wikipedia_statistics/config.tab)
+* [Commons:Data:Wikipedia_statistics/meta.tab](https://commons.wikimedia.org/wiki/Data:Wikipedia_statistics/meta.tab)
 
 ..which are pages used by [{{Wikipedia rank by size}}](https://en.wikipedia.org/wiki/Template:Wikipedia_rank_by_size), [{{NUMBEROF}}](https://en.wikipedia.org/wiki/Template:NUMBEROF) and [Module:NUMBEROF](https://en.wikipedia.org/wiki/Module:NUMBEROF) across many wiki languages and projects.
 
