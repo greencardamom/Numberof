@@ -123,10 +123,10 @@ function dataconfig(datac,  a,i,s,sn,jsona,configfp,language,site,status,countof
 
               # Some sites ("mo") have zero sites, skip
               if(countofsites > 0) {
-                  status = "active"
                   for(sn = 1; sn <= countofsites; sn++) {
                       site = jsona["sitematrix",i,"site",sn,"code"]
                       if(site == "wiki") site = "wikipedia"
+                      status = "active"
                       if(jsona["sitematrix",i,"site",sn,"closed"] == 1) status = "closed"
                       print t(2) "[\"" language "\",\"" site "\",\"" status "\"]," >> datac
                   }
