@@ -6,7 +6,7 @@
 # https://github.com/greencardamom/Numberof
 #
 # Copyright (c) User:GreenC (on en.wikipeda.org)
-# June 2020
+# June 2020 
 # License: MIT
 #
 
@@ -103,7 +103,7 @@ function jsonhead(description, sources, header, dataf,  c,i,a,b) {
 function dataconfig(datac,  a,i,s,sn,jsona,configfp,language,site,status,countofsites,desc,source,header) {
 
   desc   = "Meta statistics for Wikimedia projects. Last update: " sys2var(Exe["date"] " \"+%c\"")
-  source = "Data source: Calculted from [[:mw:API:Sitematrix]] and posted by [https://github.com/greencardamom/Numberof Numberof bot] - This page is generated auto, manual changes will be overwritten."
+  source = "Data source: Calculated from [[:mw:API:Sitematrix]] and posted by [https://github.com/greencardamom/Numberof Numberof bot]. This page is generated automatically, manual changes will be overwritten."
   header = "language=string&project=string&status=string"
   jsonhead(desc, source, header, datac)
 
@@ -163,7 +163,7 @@ function dataconfig(datac,  a,i,s,sn,jsona,configfp,language,site,status,countof
 function datatab(data,  c,i,cfgfp,k,lang,site,status,statsfp,jsona,jsonb,stat,desc,source,header) {
 
   desc = "Wikipedia Site Statistics. Last update: " sys2var(Exe["date"] " \"+%c\"")
-  source = "Data source: Calculated from [[:mw:API:Siteinfo]] and posted by [https://github.com/greencardamom/Numberof Numberof bot] - This page is generated auto, manual changes will be overwritten."
+  source = "Data source: Calculated from [[:mw:API:Siteinfo]] and posted by [https://github.com/greencardamom/Numberof Numberof bot]. This page is generated automatically, manual changes will be overwritten."
   header = "site=string&activeusers=number&admins=number&articles=number&edits=number&files=number&pages=number&users=number"
   jsonhead(desc, source, header, data)
 
@@ -257,7 +257,7 @@ function dataranktab(datar,  c,i,s,si,k,siteT,siteU,site,stat,rank,NTT,NTA,desc,
   for(si = 1; si <= s; si++) {
 
       desc   = toupper(substr(site[si],1,1)) tolower(substr(site[si],2)) " Site Rankings. Includes active sites for *." site[si] ".org - Last update: " sys2var(Exe["date"] " \"+%c\"")
-      source = "Data source: Calculated from [[Data:Wikipedia_statistics/data.tab]] and posted by [https://github.com/greencardamom/Numberof Numberof bot] - This page is generated auto, manual changes will be overwritten."
+      source = "Data source: Calculated from [[Data:Wikipedia_statistics/data.tab]] and posted by [https://github.com/greencardamom/Numberof Numberof bot]. This page is generated automatically, manual changes will be overwritten."
       header = "site=string&activeusers=number&admins=number&articles=number&edits=number&files=number&pages=number&users=number"
       jsonhead(desc, source, header, datar)
 
