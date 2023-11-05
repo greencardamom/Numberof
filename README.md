@@ -19,8 +19,8 @@ Numberof is a Wikipedia bot that creates and maintains these files:
 
 In addition, the bot creates .tab pages for Module:NumberOf hosted on Ruwiki and a few others. NumberOf is a fork of NUMBEROF, and has its own features and requirements. The files are:
 
-* [Commons:Data:Wikipedia_statistics/data.tab](https://commons.wikimedia.org/wiki/Data:Wikipedia_statistics/daily.tab) 
-* [Commons:Data:Wikipedia_statistics/data.tab](https://commons.wikimedia.org/wiki/Data:Wikipedia_statistics/hourly.tab) 
+* [Commons:Data:Wikipedia_statistics/daily.tab](https://commons.wikimedia.org/wiki/Data:Wikipedia_statistics/daily.tab) 
+* [Commons:Data:Wikipedia_statistics/hourly.tab](https://commons.wikimedia.org/wiki/Data:Wikipedia_statistics/hourly.tab) 
 
 Finally, the bot creates forks of the ranking files which are sorted with ties showing equal rank (eg. two wikis can both be ranked #42 if they are tied for that spot). These equal rank files are not supported by Module:NUMBEROF and are made available here in case anyone wants the data:
 
