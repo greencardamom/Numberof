@@ -1,13 +1,10 @@
 #!/usr/bin/awk -bE
 
-#
 # Populate 'Data:Wikipedia stats/data.tab' on Commons for use with 'Template:NUMBEROF' and 'Module:NUMBEROF'
-#
-# https://github.com/greencardamom/Numberof
-#
+#                      
 # Copyright (c) User:GreenC (on en.wikipeda.org)
-# June 2020 
-# License: MIT
+# June 2020 - January 2024
+# License: MIT 
 #
 
 BEGIN {
@@ -42,7 +39,7 @@ function getpage(s,status,  fp,i) {
       sleep(30)
   }
 
-  sys2var(Exe["mailx"] " -s \"NOTICE: Numberof failed to getpage(" s ")\" " G["email"] " < /dev/null")
+  sys2var(Exe["mailx"] " -s \"NUMBEROF TOTALLY ABORTED ITS RUN: because it failed to getpage(" s ")\" " G["email"] " < /dev/null")
   exit
 
 }
@@ -100,7 +97,7 @@ function jsonhead(description, sources, header, dataf,  c,i,a,b) {
 # Generate conf.tab
 #   see files sitematrix.json and sitematrix.awkjson for example layout
 #
-function dataconfig(datac,  a,i,s,sn,jsona,configfp,language,site,status,countofsites,desc,source,header) {
+function dataconfig(datac,  a,i,s,sn,jsona,configfp,language,site,status,countofsites,desc,source,header,url) {
 
   desc   = "Meta statistics for Wikimedia projects. Last update: " sys2var(Exe["date"] " \"+%c\"")
   source = "Data source: Calculated from [[:mw:API:Sitematrix]] and posted by [https://github.com/greencardamom/Numberof Numberof bot]. This page is generated automatically, manual changes will be overwritten."
@@ -111,11 +108,15 @@ function dataconfig(datac,  a,i,s,sn,jsona,configfp,language,site,status,countof
   if(query_json(configfp, jsona) >= 0) {
 
       for(i = 0; i <= jsona["sitematrix","count"]; i++) {
-
           language = jsona["sitematrix",i,"code"]
+   
+          # For the below see https://meta.wikimedia.org/wiki/List_of_Wikipedias#Nonstandard_language_codes
 
-          # Hard-coded workaround. Sitematrix provides no info about this mapping
           if(language == "be-x-old") language = "be-tarask"
+          else if(language == "gsw") language = "als"
+          else if(language == "rup") language = "roa-rup"
+          else if(language == "sgs") language = "bat-smg"
+          else if(language == "vro") language = "fiu-vro"
 
           # Avoid Commons entries
           if(!empty(language)) {
@@ -145,7 +146,7 @@ function dataconfig(datac,  a,i,s,sn,jsona,configfp,language,site,status,countof
 
   }
   else {
-      sys2var(Exe["mailx"] " -s \"NOTICE: Numberof failed in dataconfig()\" " G["email"] " < /dev/null")
+      sys2var(Exe["mailx"] " -s \"ABORTED: Numberof failed in dataconfig()\" " G["email"] " < /dev/null")
       exit
   }
 
@@ -154,7 +155,87 @@ function dataconfig(datac,  a,i,s,sn,jsona,configfp,language,site,status,countof
 
   if(G["doupload"])
       upload(readfile(datac), "Data:Wikipedia statistics/meta.tab", "Update statistics", G["home"] "log", BotName, "commons", "wikimedia")
-  
+
+}
+
+#
+# Generate a replacement file for https://commons.wikimedia.org/wiki/Data:NumberOf/hourly.tab used on Ruwiki and several others
+#
+function datatabrus(data,   rank,edits,pages,articles,subdepth,depth,hasdepth,c,i,lang,stat,desc,source,header) {
+
+  desc = "Wikipedia Site Statistics. May or may not be updated hourly, see page history for schedule. Meant for use with Module:NumberOf located on Ruwiki, Avwiki and several other wikis. For everyone else, please see Data:Wikipedia statistics/data.tab -- Last update: " sys2var(Exe["date"] " \"+%c\"")
+  source = "Data source: Calculated from [[:mw:API:Siteinfo]] and posted by [https://github.com/greencardamom/Numberof Numberof bot]. This page is generated automatically, manual changes will be overwritten."
+  header = "lang=string&pos=number&activeusers=number&admins=number&articles=number&edits=number&files=number&pages=number&users=number&depth=number&date=string"
+  jsonhead(desc, source, header, data)
+
+  # Generate "pos" column ie. ranking by number of articles. Ties are not resolved. Only for Wikipedia sites.
+  delete POS
+  rank = 0
+  for(lang in RUS) 
+    POS[lang] = RUS[lang]["articles"]
+  PROCINFO["sorted_in"] = "@val_type_desc" # sort order largest to smallest number
+  for(lang in POS) {
+    RUS[lang]["pos"] = ++rank
+  }
+  PROCINFO["sorted_in"] = "@unsorted"
+
+  # Generate "depth" column
+  # https://meta.wikimedia.org/wiki/Wikipedia_article_depth
+  # Depth: {{#expr:{{NUMBEROF|EDITS|ce}}/{{NUMBEROF|PAGES|ce}}*(({{NUMBEROF|PAGES|ce}}-{{NUMBEROF|ARTICLES|ce}})/{{NUMBEROF|ARTICLES|ce}})^2 round 2}}
+  for(lang in RUS) {
+    edits = int(RUS[lang]["edits"])
+    pages = int(RUS[lang]["pages"])
+    articles = int(RUS[lang]["articles"])
+    if(pages < 100 || articles < 100) {
+      RUS[lang]["depth"] = 0
+      continue
+    }
+    subdepth = (pages - articles) / articles
+    depth = (edits / pages) * (subdepth * subdepth)
+    RUS[lang]["depth"] = depth
+  }
+
+  # Generate "date" column 
+  for(lang in RUS) 
+    RUS[lang]["date"] = "null"
+
+  c = split("pos|activeusers|admins|articles|edits|images|pages|users|depth", stat, "|")
+
+  PROCINFO["sorted_in"] = "@ind_str_asc" # sort order a->z
+  delete TRUS
+  for(lang in RUS) {
+    printf t(2) "[\"" lang "\"," >> data
+    for(i = 1; i <= c; i++) {
+      printf RUS[lang][stat[i]] "," >> data
+      TRUS[stat[i]] = TRUS[stat[i]] + RUS[lang][stat[i]]        # totals ticker
+    }
+    printf "null" >> data
+    print "]," >> data
+  }
+  PROCINFO["sorted_in"] = "@unsorted"
+
+  # Total langsites that have a depth > 0
+  for(lang in RUS) 
+    if(RUS[lang]["depth"] > 0) hasdepth++
+
+  # Total row
+  TRUS["pos"] = 0
+  TRUS["depth"] = int(int(TRUS["depth"]) / int(hasdepth) )
+  TRUS["date"] = "\"@" sys2var(Exe["date"] " \"+%s\"") "\""
+  printf t(2) "[\"total\"," >> data
+  for(i = 1; i <= c; i++) 
+    printf TRUS[stat[i]] "," >> data
+  printf TRUS["date"] >> data
+
+  print "]\n\t]\n}" >> data
+  close(data)
+
+  if(G["doupload"]) {
+      upload(readfile(data), "Data:Wikipedia statistics/hourly.tab", "Update statistics", G["home"] "log", BotName, "commons", "wikimedia")
+      if(makeDaily)
+        upload(readfile(data), "Data:Wikipedia statistics/daily.tab", "Update statistics", G["home"] "log", BotName, "commons", "wikimedia")
+  }
+
 }
 
 #
@@ -166,7 +247,7 @@ function datatab(data,  c,i,cfgfp,k,lang,site,status,statsfp,jsona,jsonb,stat,de
   source = "Data source: Calculated from [[:mw:API:Siteinfo]] and posted by [https://github.com/greencardamom/Numberof Numberof bot]. This page is generated automatically, manual changes will be overwritten."
   header = "site=string&activeusers=number&admins=number&articles=number&edits=number&files=number&pages=number&users=number"
   jsonhead(desc, source, header, data)
-
+  
   # Get the configuration JSON
   if(G["confloc"] == "api")
       cfgfp = readfile(G["datac"])
@@ -175,7 +256,7 @@ function datatab(data,  c,i,cfgfp,k,lang,site,status,statsfp,jsona,jsonb,stat,de
 
   c = split("activeusers|admins|articles|edits|images|pages|users", stat, "|")
 
-  if( query_json(cfgfp, jsona) >= 0) {                   # Convert JSON cfgfp to awk associate array jsona[]
+  if( query_json(cfgfp, jsona) >= 0) {                   # Convert JSON cfgfp to awk associate array jsona[]  
       for(k = 1; k <= jsona["data","0"]; k++) {
           lang = jsona["data",k,"1"]
           site = jsona["data",k,"2"]
@@ -184,8 +265,8 @@ function datatab(data,  c,i,cfgfp,k,lang,site,status,statsfp,jsona,jsonb,stat,de
           statsfp = getpage(Exe["wget"] " -q -O- " shquote("https://" lang "." site ".org/w/api.php?action=query&meta=siteinfo&siprop=statistics" G["apitail"]), status)
           if( query_json(statsfp, jsonb) >= 0) {
               printf t(2) "[\"" lang "." site "\"," >> data
-              for(i = 1; i <= c; i++) {
-                  T[site][stat[i]] = T[site][stat[i]] + jsonb["query","statistics",stat[i]]      # totals ticker (active and closed)
+              for(i = 1; i <= c; i++) { 
+                  T[site][stat[i]] = T[site][stat[i]] + jsonb["query","statistics",stat[i]]        # totals ticker (active and closed)
                   if(status == "active") {
                       TA[site][stat[i]] = TA[site][stat[i]] + jsonb["query","statistics",stat[i]]  # totals ticker (active only)
                       TR[site][lang][stat[i]] = jsonb["query","statistics",stat[i]]                # for use with dataranktab()
@@ -193,13 +274,15 @@ function datatab(data,  c,i,cfgfp,k,lang,site,status,statsfp,jsona,jsonb,stat,de
                   if(status == "closed")
                       TC[site][stat[i]] = TC[site][stat[i]] + jsonb["query","statistics",stat[i]]  # totals ticker (closed only)
                   printf jsonb["query","statistics",stat[i]] >> data
+                  if(site == "wikipedia")
+                    RUS[lang][stat[i]] = jsonb["query","statistics",stat[i]]                   # for use with datatabrus()
                   if(i != c) printf "," >> data
               }
               print "]," >> data
           }
       }
   }
-
+  
   # Totals active and closed
   for(siteT in T) {
       printf t(2) "[\"total." siteT "\"," >> data
@@ -250,13 +333,16 @@ function datatab(data,  c,i,cfgfp,k,lang,site,status,statsfp,jsona,jsonb,stat,de
 # Generate rank pages: Data:Wikipedia_statistics/rank/wikinews.tab, wikivoyage.tab etc..
 #   depends on TR[] populated in datatab() which runs first
 #
-function dataranktab(datar,  c,i,s,si,k,siteT,siteU,site,stat,rank,NTT,NTA,desc,source,header) {
+function dataranktab(datar,  c,i,s,si,k,fp,siteT,siteU,site,stat,rank,NTT,NTA,desc,source,header) {
 
   s = split("wikipedia|wikisource|wikibooks|wikiquote|wikivoyage|wikinews|wikiversity|wiktionary", site, "|")
 
   for(si = 1; si <= s; si++) {
 
-      desc   = toupper(substr(site[si],1,1)) tolower(substr(site[si],2)) " Site Rankings. Includes active sites for *." site[si] ".org - Last update: " sys2var(Exe["date"] " \"+%c\"")
+      if(resolveTies)
+        desc   = toupper(substr(site[si],1,1)) tolower(substr(site[si],2)) " Site Rankings. Includes active sites for *." site[si] ".org - Ties are equal rank - Last update: " sys2var(Exe["date"] " \"+%c\"")
+      else
+        desc   = toupper(substr(site[si],1,1)) tolower(substr(site[si],2)) " Site Rankings. Includes active sites for *." site[si] ".org - Ties are not equal rank - Last update: " sys2var(Exe["date"] " \"+%c\"")
       source = "Data source: Calculated from [[Data:Wikipedia_statistics/data.tab]] and posted by [https://github.com/greencardamom/Numberof Numberof bot]. This page is generated automatically, manual changes will be overwritten."
       header = "site=string&activeusers=number&admins=number&articles=number&edits=number&files=number&pages=number&users=number"
       jsonhead(desc, source, header, datar)
@@ -282,11 +368,27 @@ function dataranktab(datar,  c,i,s,si,k,siteT,siteU,site,stat,rank,NTT,NTA,desc,
           }
 
           PROCINFO["sorted_in"] = "@val_type_desc" # sort order largest to smallest number
-          for(siteU in NTT) {
+
+          # Display ties as equal rank, or not. 
+          if(resolveTies) {
+            for(siteU in NTT) {
+                if(rank > 0) {
+                  if(NTT[siteU] != previous)
+                    rank++
+                }
+                else
+                  rank++
+                NTA[siteU][stat[i]] = rank
+                previous = NTT[siteU]
+            }
+          } 
+          else {
+            for(siteU in NTT) {
               rank++
               NTA[siteU][stat[i]] = rank
+            }
           }
-      }
+      }   
 
       # Ranking active sites only
 
@@ -305,8 +407,12 @@ function dataranktab(datar,  c,i,s,si,k,siteT,siteU,site,stat,rank,NTT,NTA,desc,
       print "\n\t]\n}" >> datar
       close(datar)
 
-      if(G["doupload"])
-          upload(readfile(datar), "Data:Wikipedia statistics/rank/" site[si] ".tab", "Update statistics", G["home"] "log", BotName, "commons", "wikimedia")
+      if(G["doupload"]) {
+          fp = site[si]
+          if(resolveTies)
+            fp = fp "-ties"
+          upload(readfile(datar), "Data:Wikipedia statistics/rank/" fp ".tab", "Update statistics", G["home"] "log", BotName, "commons", "wikimedia")
+      }
 
       PROCINFO["sorted_in"] = "@unsorted"
   }
@@ -317,19 +423,21 @@ function dataranktab(datar,  c,i,s,si,k,siteT,siteU,site,stat,rank,NTT,NTA,desc,
 BEGIN {
 
     _defaults = "home      = /data/project/botwikiawk/numberof/ \
-                 email     = user@example.com \
-                 version   = 1.0 \
-                 copyright = 2020"
+                 email     = dfgf56greencard93@nym.hush.com \
+                 version   = 1.2 \
+                 copyright = 2024"
 
     asplit(G, _defaults, "[ ]*[=][ ]*", "[ ]{9,}")
 
     G["datas"] = G["home"] "data.tab"
+    G["datah"] = G["home"] "datah.tab" # hourly.tab for Russian Module:NumberOf
     G["datac"] = G["home"] "datac.tab"
     G["datar"] = G["home"] "datar.tab"
     G["apitail"] = "&format=json&formatversion=2&maxlag=4"
 
     # 1-off special sites with no language sub-domains
-    G["specials"] = "meta=wikimedia&commons=wikimedia&foundation=wikimedia&wikimania=wikimedia&wikitech=wikimedia&donate=wikimedia&species=wikimedia"
+    # eg. site www.wikidata is represented here as www=wikidata
+    G["specials"] = "www=wikidata&www=wikisource&meta=wikimedia&commons=wikimedia&foundation=wikimedia&wikimania=wikimedia&wikitech=wikimedia&donate=wikimedia&species=wikimedia"
 
     # set to "commons" and it will read conf.tab on Commons .. otherwise "api" generates from API:SiteMatrix
     #  . determined by enwiki Template:NUMBEROF/conf
@@ -338,14 +446,25 @@ BEGIN {
     # Set to 0 and it won't upload to Commons, for testing
     G["doupload"] = 1
 
-    # an empty json template
+    # an empty json template 
     if( ! checkexists(Home "apiclosed.json")) {
         print "Unable to find " Home "apiclosed.json"
         exit
     }
 
+    resolveTies = 0
+    makeDaily = 0
+    Optind = Opterr = 1
+    while ((C = getopt(ARGC, ARGV, "td")) != -1) {
+      if(C == "t")
+        resolveTies = 1
+      if(C == "d")
+        makeDaily = 1         # create daily.tab
+    }
+
     dataconfig(G["datac"])    # create what used to be Data:Wikipedia_statistics/config.tab via API:SiteMatrix
     datatab(G["datas"])       # create Data:Wikipedia_statistics/data.tab
+    datatabrus(G["datah"])    # create Data:Wikipedia_statistics/hourly.tab for Russian Module:NumberOf .. must follow datatab()
     dataranktab(G["datar"])   # create Data:Wikipedia_statistics/datarank.tab
 
     # See enwiki Template:NUMBEROF/conf

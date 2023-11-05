@@ -6,14 +6,25 @@ June 2020
 
 MIT License
 
-Info
+Files
 ========
-Numberof is a Wikipedia bot that maintains 
+
+Numberof is a Wikipedia bot that creates and maintains these files:
+
 * [Commons:Data:Wikipedia_statistics/data.tab](https://commons.wikimedia.org/wiki/Data:Wikipedia_statistics/data.tab) 
 * [Commons:Data:Wikipedia_statistics/rank/*.tab](https://commons.wikimedia.org/wiki/Special:PrefixIndex?prefix=Wikipedia+statistics%2Frank%2F&namespace=486)
 * [Commons:Data:Wikipedia_statistics/meta.tab](https://commons.wikimedia.org/wiki/Data:Wikipedia_statistics/meta.tab)
 
 ..which are pages used by [{{Wikipedia rank by size}}](https://en.wikipedia.org/wiki/Template:Wikipedia_rank_by_size), [{{NUMBEROF}}](https://en.wikipedia.org/wiki/Template:NUMBEROF) and [Module:NUMBEROF](https://en.wikipedia.org/wiki/Module:NUMBEROF) across many wiki languages and projects.
+
+In addition, the bot creates .tab pages for Module:NumberOf hosted on Ruwiki and a few others. NumberOf is a fork of NUMBEROF, and has its own features and requirements. The files are:
+
+* [Commons:Data:Wikipedia_statistics/data.tab](https://commons.wikimedia.org/wiki/Data:Wikipedia_statistics/daily.tab) 
+* [Commons:Data:Wikipedia_statistics/data.tab](https://commons.wikimedia.org/wiki/Data:Wikipedia_statistics/hourly.tab) 
+
+Finally, the bot creates forks of the ranking files which are sorted with ties showing equal rank (eg. two wikis can both be ranked #42 if they are tied for that spot). These equal rank files are not supported by Module:NUMBEROF and are made available here in case anyone wants the data:
+
+* [Commons:Data:Wikipedia_statistics/rank/*-ties.tab](https://commons.wikimedia.org/wiki/Special:PrefixIndex?prefix=Wikipedia+statistics%2Frank%2F&namespace=486)
 
 Dependencies 
 ========
