@@ -1,9 +1,9 @@
 #!/usr/bin/awk -bE
 
-# Populate 'Data:Wikipedia stats/data.tab' on Commons for use with 'Template:NUMBEROF' and 'Module:NUMBEROF'
+# Populate 'Data:Wikipedia stats/*' on Commons for use with 'Template:NUMBEROF', 'Module:NUMBEROF', 'Template:NumberOf' (ruwiki)
 #                      
 # Copyright (c) User:GreenC (on en.wikipeda.org)
-# June 2020 - January 2024
+# 2020-2024
 # License: MIT 
 #
 
@@ -39,7 +39,7 @@ function getpage(s,status,  fp,i) {
       sleep(30)
   }
 
-  sys2var(Exe["mailx"] " -s \"NUMBEROF TOTALLY ABORTED ITS RUN: because it failed to getpage(" s ")\" " G["email"] " < /dev/null")
+  sys2var(Exe["mailx"] " -s \"NUMBEROF COMPLETELY ABORTED ITS RUN: because it failed to getpage(" s ")\" " G["email"] " < /dev/null")
   exit
 
 }
@@ -163,7 +163,7 @@ function dataconfig(datac,  a,i,s,sn,jsona,configfp,language,site,status,countof
 #
 function datatabrus(data,   rank,edits,pages,articles,subdepth,depth,hasdepth,c,i,lang,stat,desc,source,header) {
 
-  desc = "Wikipedia Site Statistics. May or may not be updated hourly, see page history for schedule. Meant for use with Module:NumberOf located on Ruwiki, Avwiki and several other wikis. For everyone else, please see Data:Wikipedia statistics/data.tab -- Last update: " sys2var(Exe["date"] " \"+%c\"")
+  desc = "Wikipedia Site Statistics. May or may not be updated hourly, see page history for schedule. Meant for use with Module:NumberOf located on ru,uk,by,uz,av, and possibly others. For everyone else, please see Data:Wikipedia statistics/data.tab -- Last update: " sys2var(Exe["date"] " \"+%c\"")
   source = "Data source: Calculated from [[:mw:API:Siteinfo]] and posted by [https://github.com/greencardamom/Numberof Numberof bot]. This page is generated automatically, manual changes will be overwritten."
   header = "lang=string&pos=number&activeusers=number&admins=number&articles=number&edits=number&files=number&pages=number&users=number&depth=number&date=string"
   jsonhead(desc, source, header, data)
@@ -172,8 +172,8 @@ function datatabrus(data,   rank,edits,pages,articles,subdepth,depth,hasdepth,c,
   delete POS
   rank = 0
   for(lang in RUS) 
-    POS[lang] = RUS[lang]["articles"]
-  PROCINFO["sorted_in"] = "@val_type_desc" # sort order largest to smallest number
+    POS[lang] = int(RUS[lang]["articles"])
+  PROCINFO["sorted_in"] = "@val_num_desc" # sort order largest to smallest number
   for(lang in POS) {
     RUS[lang]["pos"] = ++rank
   }
@@ -333,7 +333,7 @@ function datatab(data,  c,i,cfgfp,k,lang,site,status,statsfp,jsona,jsonb,stat,de
 # Generate rank pages: Data:Wikipedia_statistics/rank/wikinews.tab, wikivoyage.tab etc..
 #   depends on TR[] populated in datatab() which runs first
 #
-function dataranktab(datar,  c,i,s,si,k,fp,siteT,siteU,site,stat,rank,NTT,NTA,desc,source,header) {
+function dataranktab(datar,  c,i,s,si,k,fp,siteT,siteU,site,stat,rank,NTT,NTA,desc,source,header,absolute,final,prevfinal) {
 
   s = split("wikipedia|wikisource|wikibooks|wikiquote|wikivoyage|wikinews|wikiversity|wiktionary", site, "|")
 
@@ -362,31 +362,54 @@ function dataranktab(datar,  c,i,s,si,k,fp,siteT,siteU,site,stat,rank,NTT,NTA,de
               if(siteT == site[si]) {
                   for(siteU in TR[siteT]) {
                       if(siteU ~ /^total/) continue
-                      NTT[siteU] = TR[siteT][siteU][stat[i]]
+                      NTT[siteU] = int(TR[siteT][siteU][stat[i]])
                   }
               }
           }
 
-          PROCINFO["sorted_in"] = "@val_type_desc" # sort order largest to smallest number
 
           # Display ties as equal rank, or not. 
+          # Ties are resolved this way: 122256689 not this way: 122234456
+          # Per User:-jem- at https://commons.wikimedia.org/wiki/User_talk:GreenC#Ties
           if(resolveTies) {
+
+            previous = -1
+            absolute = 0
+            final = 0
+            prevfinal = 0
+
+            PROCINFO["sorted_in"] = "@val_num_desc" # sort order largest to smallest number
             for(siteU in NTT) {
-                if(rank > 0) {
-                  if(NTT[siteU] != previous)
-                    rank++
+
+                absolute++
+
+                if(previous != -1) {
+                  if(NTT[siteU] != previous) {
+                    final = absolute
+                    prevfinal = final
+                  }
+                  else
+                    final = prevfinal
                 }
                 else
-                  rank++
-                NTA[siteU][stat[i]] = rank
-                previous = NTT[siteU]
+                  final = absolute
+
+                # print "S:" site[si] "-" siteU "-" stat[i] " A:" absolute " R:" rank " P:" previous " V:" NTT[siteU] " F:" final >> "debug.txt"
+
+                NTA[siteU][stat[i]] = final
+                previous = int(NTT[siteU])
+
             }
+            PROCINFO["sorted_in"] = "@unsorted"
           } 
           else {
+
+            PROCINFO["sorted_in"] = "@val_type_desc" # sort order largest to smallest number
             for(siteU in NTT) {
               rank++
               NTA[siteU][stat[i]] = rank
             }
+            PROCINFO["sorted_in"] = "@unsorted"
           }
       }   
 
@@ -403,6 +426,7 @@ function dataranktab(datar,  c,i,s,si,k,fp,siteT,siteU,site,stat,rank,NTT,NTA,de
           }
           printf "]" >> datar
       }
+      PROCINFO["sorted_in"] = "@unsorted"
 
       print "\n\t]\n}" >> datar
       close(datar)
@@ -413,8 +437,6 @@ function dataranktab(datar,  c,i,s,si,k,fp,siteT,siteU,site,stat,rank,NTT,NTA,de
             fp = fp "-ties"
           upload(readfile(datar), "Data:Wikipedia statistics/rank/" fp ".tab", "Update statistics", G["home"] "log", BotName, "commons", "wikimedia")
       }
-
-      PROCINFO["sorted_in"] = "@unsorted"
   }
 
 }
