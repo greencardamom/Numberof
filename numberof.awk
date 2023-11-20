@@ -114,6 +114,7 @@ function dataconfig(datac,  a,i,s,sn,jsona,configfp,language,site,status,countof
 
           if(language == "be-x-old") language = "be-tarask"
           else if(language == "gsw") language = "als"
+          else if(language == "lzh") language = "zh-classical"
           else if(language == "rup") language = "roa-rup"
           else if(language == "sgs") language = "bat-smg"
           else if(language == "vro") language = "fiu-vro"
