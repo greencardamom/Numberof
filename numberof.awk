@@ -118,6 +118,7 @@ function dataconfig(datac,  a,i,s,sn,jsona,configfp,language,site,status,countof
           else if(language == "rup") language = "roa-rup"
           else if(language == "sgs") language = "bat-smg"
           else if(language == "vro") language = "fiu-vro"
+          else if(language == "yue") language = "zh-yue"
 
           # Avoid Commons entries
           if(!empty(language)) {
