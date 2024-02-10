@@ -1,3 +1,9 @@
+* Deprecated *
+
+These instructions no longer work since Toolforge no longer uses the Grid Engine.
+
+------
+
 Notes for use on Toolforge:
 
  1. Make a sub-directory to hold stdio and stderr 

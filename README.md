@@ -29,7 +29,7 @@ Finally, the bot creates forks of the ranking files which are sorted with ties s
 Dependencies 
 ========
 * GNU Awk 4.1+
-* [BotWikiAwk](https://github.com/greencardamom/BotWikiAwk) (version Jan 2019 +)
+* [BotWikiAwk](https://github.com/greencardamom/BotWikiAwk) (version December 2023 or later)
 * A bot User account with bot permissions on Commons
 
 Installation
@@ -42,25 +42,12 @@ Installation
 3. Clone Numberof. For example:
 	git clone https://github.com/greencardamom/Numberof
 
-4. Edit ~/BotWikiAwk/lib/botwiki.awk
+4. Set ~/Numberof/numberof.awk to mode 750, and change the first shebang line to the location of awk.
 
-	A. Set local URLs in section #1 and #2 
-
-	B. Create a new 'case' entry in section #3, adjust the Home bot path created in step 2:
-
-		case "numberof":                                             # Custom bot paths
-			Home = "/data/project/projectname/numberof/"         # path ends in "/"
-			Agent = UserPage " (ask me about " BotName ")"
-			Engine = 3
-			break
-
-
-5. Set ~/Numberof/numberof.awk to mode 750, and change the first shebang line to the location of awk.
-
-6. In numberof.awk in the "BEGIN {" section is a place for an email address for error reports.
+5. In numberof.awk in the "BEGIN {" section is a place for an email address for error reports.
 
 Running
 ========
 
-1. See the file toolforge.txt for how to run on Toolforge. Adjust to your local system if not on Toolforge.
-
+1. See the file toolforge.txt for how to run on Toolforge. 
+2. If not on Toolforge simply run it from cron every x hours like every 4 hours
