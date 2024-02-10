@@ -1,4 +1,4 @@
-#!/usr/bin/awk -bE
+#!/usr/local/bin/awk -bE
 
 # Populate 'Data:Wikipedia stats/*' on Commons for use with 'Template:NUMBEROF', 'Module:NUMBEROF', 'Template:NumberOf' (ruwiki)
 #                      
@@ -7,14 +7,73 @@
 # License: MIT 
 #
 
-BEGIN {
+BEGIN { # Bot cfg
+
+  _defaults = "home      = /home/user/numberof/ \
+               email     = name@email.com \
+               version   = 1.4 \
+               copyright = 2024"
+
+  asplit(G, _defaults, "[ ]*[=][ ]*", "[ ]{9,}")
   BotName = "numberof"
+  Home = G["home"]
+  Agent = "Ask me about " BotName " - " G["email"] 
+  Engine = 3              
+
+  G["datas"] = G["home"] "data.tab"
+  G["datah"] = G["home"] "datah.tab" # hourly.tab for Russian Module:NumberOf
+  G["datac"] = G["home"] "datac.tab"
+  G["datar"] = G["home"] "datar.tab"
+  G["apitail"] = "&format=json&formatversion=2&maxlag=4"
+
+  # 1-off special sites with no language sub-domains
+  # eg. site www.wikidata is represented here as www=wikidata
+  G["specials"] = "www=wikidata&www=wikisource&meta=wikimedia&commons=wikimedia&incubator=wikimedia&foundation=wikimedia&wikimania=wikimedia&wikitech=wikimedia&donate=wikimedia&species=wikimedia"
+
+  # CLI option that creates parallel set of data files on Commons where ties are resolved
+  G["resolveties"] = 0
+
+  # CLI option that creates the Russian-wiki "daily" data file on Commons, once per day per cron
+  G["makedaily"] = 0
+
+  # Set to 0 and it won't upload to Commons, for testing
+  G["doupload"] = 1
+
 }
 
 @include "botwiki"
 @include "library"
 @include "json"
 
+BEGIN { # Bot run
+
+    # an empty json template 
+    if( ! checkexists(G["home"] "apiclosed.json")) {
+        print "Unable to find " G["home"] "apiclosed.json"
+        exit
+    }
+
+    # set to "commons" and it will read conf.tab on Commons .. otherwise "api" generates from API:SiteMatrix
+    #  . determined by enwiki Template:NUMBEROF/conf
+    G["confloc"] = getconf()
+
+    Optind = Opterr = 1
+    while ((C = getopt(ARGC, ARGV, "td")) != -1) {
+      if(C == "t")
+        G["resolveties"] = 1
+      if(C == "d")
+        G["makedaily"] = 1         # create daily.tab
+    }
+
+    dataconfig(G["datac"])    # create what used to be Data:Wikipedia_statistics/config.tab via API:SiteMatrix
+    datatab(G["datas"])       # create Data:Wikipedia_statistics/data.tab
+    datatabrus(G["datah"])    # create Data:Wikipedia_statistics/hourly.tab for Russian Module:NumberOf .. must follow datatab()
+    dataranktab(G["datar"])   # create Data:Wikipedia_statistics/datarank.tab
+
+    # See enwiki Template:NUMBEROF/conf
+    # sys2var(Exe["cp"] " " shquote(G["datac"]) " " shquote("/data/project/botwikiawk/www/static/config.tab.json") )
+
+}
 
 #
 # Generate n-number of tabs
@@ -39,7 +98,7 @@ function getpage(s,status,  fp,i) {
       sleep(30)
   }
 
-  sys2var(Exe["mailx"] " -s \"NUMBEROF COMPLETELY ABORTED ITS RUN: because it failed to getpage(" s ")\" " G["email"] " < /dev/null")
+  email(Exe["from_email"], Exe["to_email"], "NUMBEROF COMPLETELY ABORTED ITS RUN because it failed to getpage(" s ")", "")
   exit
 
 }
@@ -114,9 +173,12 @@ function dataconfig(datac,  a,i,s,sn,jsona,configfp,language,site,status,countof
 
           if(language == "be-x-old") language = "be-tarask"
           else if(language == "gsw") language = "als"
+          else if(language == "lzh") language = "zh-classical"
+          else if(language == "nan") language = "zh-min-nan"
           else if(language == "rup") language = "roa-rup"
           else if(language == "sgs") language = "bat-smg"
           else if(language == "vro") language = "fiu-vro"
+          else if(language == "yue") language = "zh-yue"
 
           # Avoid Commons entries
           if(!empty(language)) {
@@ -146,7 +208,7 @@ function dataconfig(datac,  a,i,s,sn,jsona,configfp,language,site,status,countof
 
   }
   else {
-      sys2var(Exe["mailx"] " -s \"ABORTED: Numberof failed in dataconfig()\" " G["email"] " < /dev/null")
+      email(Exe["from_email"], Exe["to_email"], "ABORTED: Numberof failed in dataconfig()", "")
       exit
   }
 
@@ -232,7 +294,7 @@ function datatabrus(data,   rank,edits,pages,articles,subdepth,depth,hasdepth,c,
 
   if(G["doupload"]) {
       upload(readfile(data), "Data:Wikipedia statistics/hourly.tab", "Update statistics", G["home"] "log", BotName, "commons", "wikimedia")
-      if(makeDaily)
+      if(G["makedaily"])
         upload(readfile(data), "Data:Wikipedia statistics/daily.tab", "Update statistics", G["home"] "log", BotName, "commons", "wikimedia")
   }
 
@@ -339,7 +401,7 @@ function dataranktab(datar,  c,i,s,si,k,fp,siteT,siteU,site,stat,rank,NTT,NTA,de
 
   for(si = 1; si <= s; si++) {
 
-      if(resolveTies)
+      if(G["resolveties"])
         desc   = toupper(substr(site[si],1,1)) tolower(substr(site[si],2)) " Site Rankings. Includes active sites for *." site[si] ".org - Ties are equal rank - Last update: " sys2var(Exe["date"] " \"+%c\"")
       else
         desc   = toupper(substr(site[si],1,1)) tolower(substr(site[si],2)) " Site Rankings. Includes active sites for *." site[si] ".org - Ties are not equal rank - Last update: " sys2var(Exe["date"] " \"+%c\"")
@@ -371,7 +433,7 @@ function dataranktab(datar,  c,i,s,si,k,fp,siteT,siteU,site,stat,rank,NTT,NTA,de
           # Display ties as equal rank, or not. 
           # Ties are resolved this way: 122256689 not this way: 122234456
           # Per User:-jem- at https://commons.wikimedia.org/wiki/User_talk:GreenC#Ties
-          if(resolveTies) {
+          if(G["resolveties"]) {
 
             previous = -1
             absolute = 0
@@ -433,64 +495,11 @@ function dataranktab(datar,  c,i,s,si,k,fp,siteT,siteU,site,stat,rank,NTT,NTA,de
 
       if(G["doupload"]) {
           fp = site[si]
-          if(resolveTies)
+          if(G["resolveties"])
             fp = fp "-ties"
           upload(readfile(datar), "Data:Wikipedia statistics/rank/" fp ".tab", "Update statistics", G["home"] "log", BotName, "commons", "wikimedia")
       }
   }
-
-}
-
-
-BEGIN {
-
-    _defaults = "home      = /data/project/botwikiawk/numberof/ \
-                 email     = dfgf56greencard93@nym.hush.com \
-                 version   = 1.2 \
-                 copyright = 2024"
-
-    asplit(G, _defaults, "[ ]*[=][ ]*", "[ ]{9,}")
-
-    G["datas"] = G["home"] "data.tab"
-    G["datah"] = G["home"] "datah.tab" # hourly.tab for Russian Module:NumberOf
-    G["datac"] = G["home"] "datac.tab"
-    G["datar"] = G["home"] "datar.tab"
-    G["apitail"] = "&format=json&formatversion=2&maxlag=4"
-
-    # 1-off special sites with no language sub-domains
-    # eg. site www.wikidata is represented here as www=wikidata
-    G["specials"] = "www=wikidata&www=wikisource&meta=wikimedia&commons=wikimedia&foundation=wikimedia&wikimania=wikimedia&wikitech=wikimedia&donate=wikimedia&species=wikimedia"
-
-    # set to "commons" and it will read conf.tab on Commons .. otherwise "api" generates from API:SiteMatrix
-    #  . determined by enwiki Template:NUMBEROF/conf
-    G["confloc"] = getconf()
-
-    # Set to 0 and it won't upload to Commons, for testing
-    G["doupload"] = 1
-
-    # an empty json template 
-    if( ! checkexists(Home "apiclosed.json")) {
-        print "Unable to find " Home "apiclosed.json"
-        exit
-    }
-
-    resolveTies = 0
-    makeDaily = 0
-    Optind = Opterr = 1
-    while ((C = getopt(ARGC, ARGV, "td")) != -1) {
-      if(C == "t")
-        resolveTies = 1
-      if(C == "d")
-        makeDaily = 1         # create daily.tab
-    }
-
-    dataconfig(G["datac"])    # create what used to be Data:Wikipedia_statistics/config.tab via API:SiteMatrix
-    datatab(G["datas"])       # create Data:Wikipedia_statistics/data.tab
-    datatabrus(G["datah"])    # create Data:Wikipedia_statistics/hourly.tab for Russian Module:NumberOf .. must follow datatab()
-    dataranktab(G["datar"])   # create Data:Wikipedia_statistics/datarank.tab
-
-    # See enwiki Template:NUMBEROF/conf
-    sys2var(Exe["cp"] " " shquote(G["datac"]) " " shquote("/data/project/botwikiawk/www/static/config.tab.json") )
 
 }
 
