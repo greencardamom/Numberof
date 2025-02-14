@@ -49,5 +49,4 @@ Installation
 Running
 ========
 
-1. See the file toolforge.txt for how to run on Toolforge. 
-2. If not on Toolforge simply run it from cron every x hours like every 4 hours
+1. Run it from cron every x hours. See crontab.txt for an example

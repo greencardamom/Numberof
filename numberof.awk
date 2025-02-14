@@ -3,7 +3,7 @@
 # Populate 'Data:Wikipedia stats/*' on Commons for use with 'Template:NUMBEROF', 'Module:NUMBEROF', 'Template:NumberOf' (ruwiki)
 #                      
 # Copyright (c) User:GreenC (on en.wikipeda.org)
-# 2020-2024
+# 2020-2025
 # License: MIT 
 #
 
@@ -12,7 +12,7 @@ BEGIN { # Bot cfg
   _defaults = "home      = /home/user/numberof/ \
                email     = name@email.com \
                version   = 1.4 \
-               copyright = 2024"
+               copyright = 2025"
 
   asplit(G, _defaults, "[ ]*[=][ ]*", "[ ]{9,}")
   BotName = "numberof"

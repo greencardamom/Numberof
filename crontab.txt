@@ -1,0 +1,12 @@
+#
+# numberof crontab entry
+#
+# Run every 3 hours except for 23hr which runs with the -d switch for also updating daily.tab
+
+45 2,5,8,11,14,17,20 * * * /home/user/Numberof/numberof.awk
+
+45 23 * * * /home/user/Numberof/numberof.awk -d
+
+# Ties dataset - ties are ranked equally instead of sequentially. Updated once daily 
+
+25 12 * * * /home/user/Numberof/numberof.awk -t
