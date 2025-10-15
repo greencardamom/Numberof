@@ -3,32 +3,34 @@
 # Populate 'Data:Wikipedia stats/*' on Commons for use with 'Template:NUMBEROF', 'Module:NUMBEROF', 'Template:NumberOf' (ruwiki)
 #                      
 # Copyright (c) User:GreenC (on en.wikipeda.org)
-# 2020-2025
+# 2020-2024
 # License: MIT 
 #
 
 BEGIN { # Bot cfg
 
-  _defaults = "home      = /home/user/numberof/ \
-               email     = name@email.com \
+  _defaults = "home      = /home/greenc/toolforge/numberof/ \
+               emailfp   = /home/greenc/toolforge/scripts/secrets/greenc.email \
                version   = 1.4 \
                copyright = 2025"
 
   asplit(G, _defaults, "[ ]*[=][ ]*", "[ ]{9,}")
   BotName = "numberof"
   Home = G["home"]
-  Agent = "Ask me about " BotName " - " G["email"] 
-  Engine = 3              
+  Agent = "numberof acre User:GreenC enwiki" 
+  Engine = 3
+  G["email"] = strip(readfile(G["emailfp"]))
 
   G["datas"] = G["home"] "data.tab"
   G["datah"] = G["home"] "datah.tab" # hourly.tab for Russian Module:NumberOf
   G["datac"] = G["home"] "datac.tab"
   G["datar"] = G["home"] "datar.tab"
-  G["apitail"] = "&format=json&formatversion=2&maxlag=4"
+  #G["apitail"] = "&format=json&formatversion=2&maxlag=4"
+  G["apitail"] = "&format=json&formatversion=2"
 
   # 1-off special sites with no language sub-domains
   # eg. site www.wikidata is represented here as www=wikidata
-  G["specials"] = "www=wikidata&www=wikisource&meta=wikimedia&commons=wikimedia&incubator=wikimedia&foundation=wikimedia&wikimania=wikimedia&wikitech=wikimedia&donate=wikimedia&species=wikimedia"
+  G["specials"] = "www=wikifunctions&www=wikidata&www=wikisource&meta=wikimedia&commons=wikimedia&incubator=wikimedia&foundation=wikimedia&wikimania=wikimedia&wikitech=wikimedia&donate=wikimedia&species=wikimedia&beta=wikiversity"
 
   # CLI option that creates parallel set of data files on Commons where ties are resolved
   G["resolveties"] = 0
@@ -76,6 +78,13 @@ BEGIN { # Bot run
 }
 
 #
+# Currrent date/time in UTC
+#
+function currenttimeUTC() {
+  return gsubi("GMT", "UTC", strftime(PROCINFO["strftime"], systime(), 1))
+}
+
+#
 # Generate n-number of tabs
 #
 function t(n, r,i) {
@@ -93,6 +102,8 @@ function getpage(s,status,  fp,i) {
       if(i == 2 && status ~ "closed")          # If closed site MW API may not have data available..
           return readfile(G["home"] "apiclosed.json") # Return manufactured JSON with data values of 0
       fp = sys2var(s)
+#stdErr(s)
+#stdErr(fp)
       if(! empty(fp) && fp ~ "(schema|statistics|sitematrix)")
           return fp
       sleep(30)
@@ -158,12 +169,12 @@ function jsonhead(description, sources, header, dataf,  c,i,a,b) {
 #
 function dataconfig(datac,  a,i,s,sn,jsona,configfp,language,site,status,countofsites,desc,source,header,url) {
 
-  desc   = "Meta statistics for Wikimedia projects. Last update: " sys2var(Exe["date"] " \"+%c\"")
+  desc   = "Meta statistics for Wikimedia projects. Last update: " currenttimeUTC() 
   source = "Data source: Calculated from [[:mw:API:Sitematrix]] and posted by [https://github.com/greencardamom/Numberof Numberof bot]. This page is generated automatically, manual changes will be overwritten."
   header = "language=string&project=string&status=string"
   jsonhead(desc, source, header, datac)
 
-  configfp = getpage(Exe["wget"] " -q -O- " shquote("https://en.wikipedia.org/w/api.php?action=sitematrix" G["apitail"]), "")
+  configfp = getpage(Exe["wget"] " --user-agent=" shquote(Agent) " -q -O- " shquote("https://en.wikipedia.org/w/api.php?action=sitematrix" G["apitail"]), "")
   if(query_json(configfp, jsona) >= 0) {
 
       for(i = 0; i <= jsona["sitematrix","count"]; i++) {
@@ -212,7 +223,17 @@ function dataconfig(datac,  a,i,s,sn,jsona,configfp,language,site,status,countof
       exit
   }
 
-  print "\n\t]\n}" >> datac
+  print "\n" >> datac
+  print t(1) "]," >> datac
+  print t(1) "\"mediawikiCategories\": [" >> datac
+  print t(2) "{" >> datac
+  print t(3) "\"name\": \"Wikimedia-related tabular data\"," >> datac
+  print t(3) "\"sort\": \"statistics\"" >> datac
+  print t(2) "}" >> datac
+  print t(1) "]" >> datac
+  print "}" >> datac
+
+  # print "\n\t]\n}" >> datac
   close(datac)
 
   if(G["doupload"])
@@ -225,7 +246,7 @@ function dataconfig(datac,  a,i,s,sn,jsona,configfp,language,site,status,countof
 #
 function datatabrus(data,   rank,edits,pages,articles,subdepth,depth,hasdepth,c,i,lang,stat,desc,source,header) {
 
-  desc = "Wikipedia Site Statistics. May or may not be updated hourly, see page history for schedule. Meant for use with Module:NumberOf located on ru,uk,by,uz,av, and possibly others. For everyone else, please see Data:Wikipedia statistics/data.tab -- Last update: " sys2var(Exe["date"] " \"+%c\"")
+  desc = "Wikipedia Site Statistics. May or may not be updated hourly, see page history for schedule. Meant for use with Module:NumberOf located on ru,uk,by,uz,av, and possibly others. For everyone else, please see Data:Wikipedia statistics/data.tab -- Last update: " currenttimeUTC() 
   source = "Data source: Calculated from [[:mw:API:Siteinfo]] and posted by [https://github.com/greencardamom/Numberof Numberof bot]. This page is generated automatically, manual changes will be overwritten."
   header = "lang=string&pos=number&activeusers=number&admins=number&articles=number&edits=number&files=number&pages=number&users=number&depth=number&date=string"
   jsonhead(desc, source, header, data)
@@ -283,13 +304,23 @@ function datatabrus(data,   rank,edits,pages,articles,subdepth,depth,hasdepth,c,
   # Total row
   TRUS["pos"] = 0
   TRUS["depth"] = int(int(TRUS["depth"]) / int(hasdepth) )
-  TRUS["date"] = "\"@" sys2var(Exe["date"] " \"+%s\"") "\""
+  TRUS["date"] = "\"@" systime() "\""
   printf t(2) "[\"total\"," >> data
   for(i = 1; i <= c; i++) 
     printf TRUS[stat[i]] "," >> data
   printf TRUS["date"] >> data
 
-  print "]\n\t]\n}" >> data
+
+  print "]\n" >> data
+  print t(1) "]," >> data
+  print t(1) "\"mediawikiCategories\": [" >> data
+  print t(2) "{" >> data
+  print t(3) "\"name\": \"Wikimedia-related tabular data\"," >> data
+  print t(3) "\"sort\": \"statistics\"" >> data
+  print t(2) "}" >> data
+  print t(1) "]" >> data
+  print "}" >> data
+
   close(data)
 
   if(G["doupload"]) {
@@ -305,7 +336,7 @@ function datatabrus(data,   rank,edits,pages,articles,subdepth,depth,hasdepth,c,
 #
 function datatab(data,  c,i,cfgfp,k,lang,site,status,statsfp,jsona,jsonb,stat,desc,source,header) {
 
-  desc = "Wikipedia Site Statistics. Last update: " sys2var(Exe["date"] " \"+%c\"")
+  desc = "Wikipedia Site Statistics. Last update: " currenttimeUTC()
   source = "Data source: Calculated from [[:mw:API:Siteinfo]] and posted by [https://github.com/greencardamom/Numberof Numberof bot]. This page is generated automatically, manual changes will be overwritten."
   header = "site=string&activeusers=number&admins=number&articles=number&edits=number&files=number&pages=number&users=number"
   jsonhead(desc, source, header, data)
@@ -324,7 +355,7 @@ function datatab(data,  c,i,cfgfp,k,lang,site,status,statsfp,jsona,jsonb,stat,de
           site = jsona["data",k,"2"]
           status = jsona["data",k,"3"]
           if(lang == "total") continue
-          statsfp = getpage(Exe["wget"] " -q -O- " shquote("https://" lang "." site ".org/w/api.php?action=query&meta=siteinfo&siprop=statistics" G["apitail"]), status)
+          statsfp = getpage(Exe["wget"] " --user-agent=" shquote(Agent) " -q -O- " shquote("https://" lang "." site ".org/w/api.php?action=query&meta=siteinfo&siprop=statistics" G["apitail"]), status)
           if( query_json(statsfp, jsonb) >= 0) {
               printf t(2) "[\"" lang "." site "\"," >> data
               for(i = 1; i <= c; i++) { 
@@ -383,7 +414,17 @@ function datatab(data,  c,i,cfgfp,k,lang,site,status,statsfp,jsona,jsonb,stat,de
       if(i != c) printf "," >> data
   }
 
-  print "]\n\t]\n}" >> data
+  print "]\n" >> data
+  print t(1) "]," >> data
+  print t(1) "\"mediawikiCategories\": [" >> data
+  print t(2) "{" >> data
+  print t(3) "\"name\": \"Wikimedia-related tabular data\"," >> data
+  print t(3) "\"sort\": \"statistics\"" >> data
+  print t(2) "}" >> data
+  print t(1) "]" >> data
+  print "}" >> data
+
+  # print "]\n\t]\n}" >> data
   close(data)
 
   if(G["doupload"])
@@ -402,9 +443,9 @@ function dataranktab(datar,  c,i,s,si,k,fp,siteT,siteU,site,stat,rank,NTT,NTA,de
   for(si = 1; si <= s; si++) {
 
       if(G["resolveties"])
-        desc   = toupper(substr(site[si],1,1)) tolower(substr(site[si],2)) " Site Rankings. Includes active sites for *." site[si] ".org - Ties are equal rank - Last update: " sys2var(Exe["date"] " \"+%c\"")
+        desc   = toupper(substr(site[si],1,1)) tolower(substr(site[si],2)) " Site Rankings. Includes active sites for *." site[si] ".org - Ties are equal rank - Last update: " currenttimeUTC()
       else
-        desc   = toupper(substr(site[si],1,1)) tolower(substr(site[si],2)) " Site Rankings. Includes active sites for *." site[si] ".org - Ties are not equal rank - Last update: " sys2var(Exe["date"] " \"+%c\"")
+        desc   = toupper(substr(site[si],1,1)) tolower(substr(site[si],2)) " Site Rankings. Includes active sites for *." site[si] ".org - Ties are not equal rank - Last update: " currenttimeUTC()
       source = "Data source: Calculated from [[Data:Wikipedia_statistics/data.tab]] and posted by [https://github.com/greencardamom/Numberof Numberof bot]. This page is generated automatically, manual changes will be overwritten."
       header = "site=string&activeusers=number&admins=number&articles=number&edits=number&files=number&pages=number&users=number"
       jsonhead(desc, source, header, datar)
@@ -490,7 +531,17 @@ function dataranktab(datar,  c,i,s,si,k,fp,siteT,siteU,site,stat,rank,NTT,NTA,de
       }
       PROCINFO["sorted_in"] = "@unsorted"
 
-      print "\n\t]\n}" >> datar
+      print "\n" >> datar
+      print t(1) "]," >> datar
+      print t(1) "\"mediawikiCategories\": [" >> datar
+      print t(2) "{" >> datar
+      print t(3) "\"name\": \"Wikimedia-related tabular data\"," >> datar
+      print t(3) "\"sort\": \"statistics\"" >> datar
+      print t(2) "}" >> datar
+      print t(1) "]" >> datar
+      print "}" >> datar
+
+      # print "\n\t]\n}" >> datar
       close(datar)
 
       if(G["doupload"]) {
