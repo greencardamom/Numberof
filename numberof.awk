@@ -334,7 +334,7 @@ function datatabrus(data,   rank,edits,pages,articles,subdepth,depth,hasdepth,c,
 #
 # Generate data.tab statistics
 #
-function datatab(data,  c,i,cfgfp,k,lang,site,status,statsfp,jsona,jsonb,stat,desc,source,header) {
+function datatab(data,  c,i,cfgfp,k,lang,site,status,statsfp,jsona,jsonb,stat,desc,source,header,dtl,dtn,dtf) {
 
   desc = "Wikipedia Site Statistics. Last update: " currenttimeUTC()
   source = "Data source: Calculated from [[:mw:API:Siteinfo]] and posted by [https://github.com/greencardamom/Numberof Numberof bot]. This page is generated automatically, manual changes will be overwritten."
@@ -427,8 +427,20 @@ function datatab(data,  c,i,cfgfp,k,lang,site,status,statsfp,jsona,jsonb,stat,de
   # print "]\n\t]\n}" >> data
   close(data)
 
-  if(G["doupload"])
-      upload(readfile(data), "Data:Wikipedia statistics/data.tab", "Update statistics", G["home"] "log", BotName, "commons", "wikimedia")
+  dtf = readfile(data)
+  dtl = length(dtf)
+  dtn = "data.tab." dateeight() "." dtl
+
+  # Sanity check JSON sz to avoid corruption. Such as if API:SiteMatrix returns missing sites.
+  if(int(dtl) < 50000) {
+      email(Exe["from_email"], Exe["to_email"], "NUMBEROF FAILED - CORRUPTED data.tab (" dtn ")", "")
+      print dtf > dtn
+      close(dtn)
+  }
+  else {
+    if(G["doupload"])
+        upload(readfile(data), "Data:Wikipedia statistics/data.tab", "Update statistics", G["home"] "log", BotName, "commons", "wikimedia")
+  }
 
 }
 
