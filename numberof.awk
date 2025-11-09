@@ -11,7 +11,7 @@ BEGIN { # Bot cfg
 
   _defaults = "home      = /home/greenc/toolforge/numberof/ \
                emailfp   = /home/greenc/toolforge/scripts/secrets/greenc.email \
-               version   = 1.4 \
+               version   = 1.5 \
                copyright = 2025"
 
   asplit(G, _defaults, "[ ]*[=][ ]*", "[ ]{9,}")
@@ -25,8 +25,7 @@ BEGIN { # Bot cfg
   G["datah"] = G["home"] "datah.tab" # hourly.tab for Russian Module:NumberOf
   G["datac"] = G["home"] "datac.tab"
   G["datar"] = G["home"] "datar.tab"
-  #G["apitail"] = "&format=json&formatversion=2&maxlag=4"
-  G["apitail"] = "&format=json&formatversion=2"
+  G["apitail"] = "&format=json&formatversion=2&maxlag=4"
 
   # 1-off special sites with no language sub-domains
   # eg. site www.wikidata is represented here as www=wikidata
@@ -102,8 +101,6 @@ function getpage(s,status,  fp,i) {
       if(i == 2 && status ~ "closed")          # If closed site MW API may not have data available..
           return readfile(G["home"] "apiclosed.json") # Return manufactured JSON with data values of 0
       fp = sys2var(s)
-#stdErr(s)
-#stdErr(fp)
       if(! empty(fp) && fp ~ "(schema|statistics|sitematrix)")
           return fp
       sleep(30)
@@ -167,7 +164,7 @@ function jsonhead(description, sources, header, dataf,  c,i,a,b) {
 # Generate conf.tab
 #   see files sitematrix.json and sitematrix.awkjson for example layout
 #
-function dataconfig(datac,  a,i,s,sn,jsona,configfp,language,site,status,countofsites,desc,source,header,url) {
+function dataconfig(datac,  a,i,s,sn,jsona,configfp,language,site,status,countofsites,desc,source,header,url,dtf,dtl,dtn) {
 
   desc   = "Meta statistics for Wikimedia projects. Last update: " currenttimeUTC() 
   source = "Data source: Calculated from [[:mw:API:Sitematrix]] and posted by [https://github.com/greencardamom/Numberof Numberof bot]. This page is generated automatically, manual changes will be overwritten."
@@ -236,8 +233,20 @@ function dataconfig(datac,  a,i,s,sn,jsona,configfp,language,site,status,countof
   # print "\n\t]\n}" >> datac
   close(datac)
 
-  if(G["doupload"])
-      upload(readfile(datac), "Data:Wikipedia statistics/meta.tab", "Update statistics", G["home"] "log", BotName, "commons", "wikimedia")
+  dtf = readfile(datac)
+  dtl = length(dtf)
+  dtn = "datac.tab." dateeight() "." dtl
+
+  # Sanity check JSON sz to avoid corruption. Such as if API:SiteMatrix returns missing sites.
+  if(int(dtl) < 30000) {
+      email(Exe["from_email"], Exe["to_email"], "NUMBEROF FAILED - CORRUPTED datac.tab (" dtn ")", "")
+      print dtf > dtn
+      close(dtn)
+  }
+  else {
+      if(G["doupload"])
+          upload(readfile(datac), "Data:Wikipedia statistics/meta.tab", "Update statistics", G["home"] "log", BotName, "commons", "wikimedia")
+  }
 
 }
 
@@ -562,6 +571,7 @@ function dataranktab(datar,  c,i,s,si,k,fp,siteT,siteU,site,stat,rank,NTT,NTA,de
             fp = fp "-ties"
           upload(readfile(datar), "Data:Wikipedia statistics/rank/" fp ".tab", "Update statistics", G["home"] "log", BotName, "commons", "wikimedia")
       }
+
   }
 
 }
