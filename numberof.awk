@@ -25,7 +25,8 @@ BEGIN { # Bot cfg
   G["datah"] = G["home"] "datah.tab" # hourly.tab for Russian Module:NumberOf
   G["datac"] = G["home"] "datac.tab"
   G["datar"] = G["home"] "datar.tab"
-  G["apitail"] = "&format=json&formatversion=2&maxlag=4"
+  G["apitail"]  = "&format=json&formatversion=2&maxlag=4"
+  G["apitail2"] = "&format=json&formatversion=2"
 
   # 1-off special sites with no language sub-domains
   # eg. site www.wikidata is represented here as www=wikidata
@@ -364,7 +365,10 @@ function datatab(data,  c,i,cfgfp,k,lang,site,status,statsfp,jsona,jsonb,stat,de
           site = jsona["data",k,"2"]
           status = jsona["data",k,"3"]
           if(lang == "total") continue
-          statsfp = getpage(Exe["wget"] " --user-agent=" shquote(Agent) " -q -O- " shquote("https://" lang "." site ".org/w/api.php?action=query&meta=siteinfo&siprop=statistics" G["apitail"]), status)
+          if(site == "placeholder")  # maxlag problem for some sites. Placeholder means none ie. all are OK
+            statsfp = getpage(Exe["wget"] " --user-agent=" shquote(Agent) " -q -O- " shquote("https://" lang "." site ".org/w/api.php?action=query&meta=siteinfo&siprop=statistics" G["apitail2"]), status)
+          else
+            statsfp = getpage(Exe["wget"] " --user-agent=" shquote(Agent) " -q -O- " shquote("https://" lang "." site ".org/w/api.php?action=query&meta=siteinfo&siprop=statistics" G["apitail"]), status)
           if( query_json(statsfp, jsonb) >= 0) {
               printf t(2) "[\"" lang "." site "\"," >> data
               for(i = 1; i <= c; i++) { 
