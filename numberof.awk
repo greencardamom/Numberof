@@ -17,7 +17,7 @@ BEGIN { # Bot cfg
   asplit(G, _defaults, "[ ]*[=][ ]*", "[ ]{9,}")
   BotName = "numberof"
   Home = G["home"]
-  Agent = "numberof acre User:GreenC enwiki" 
+  Agent = "User:GreenC_bot numberof BotWikiAwk" 
   Engine = 3
   G["email"] = strip(readfile(G["emailfp"]))
 
@@ -25,8 +25,8 @@ BEGIN { # Bot cfg
   G["datah"] = G["home"] "datah.tab" # hourly.tab for Russian Module:NumberOf
   G["datac"] = G["home"] "datac.tab"
   G["datar"] = G["home"] "datar.tab"
-  G["apitail"]  = "&format=json&formatversion=2&maxlag=4"
-  G["apitail2"] = "&format=json&formatversion=2"
+  G["apitail1"]  = "&format=json&formatversion=2&maxlag=4"
+  G["apitail"] = "&format=json&formatversion=2"
 
   # 1-off special sites with no language sub-domains
   # eg. site www.wikidata is represented here as www=wikidata
@@ -98,13 +98,13 @@ function t(n, r,i) {
 #
 function getpage(s,status,  fp,i) {
 
-  for(i = 1; i <= 10; i++) {
+  for(i = 1; i <= 50; i++) {
       if(i == 2 && status ~ "closed")          # If closed site MW API may not have data available..
           return readfile(G["home"] "apiclosed.json") # Return manufactured JSON with data values of 0
       fp = sys2var(s)
       if(! empty(fp) && fp ~ "(schema|statistics|sitematrix)")
           return fp
-      sleep(30)
+      sleep(2, "unix")
   }
 
   email(Exe["from_email"], Exe["to_email"], "NUMBEROF COMPLETELY ABORTED ITS RUN because it failed to getpage(" s ")", "")
