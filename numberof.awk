@@ -101,10 +101,11 @@ function getpage(s,status,  fp,i) {
   for(i = 1; i <= 50; i++) {
       if(i == 2 && status ~ "closed")          # If closed site MW API may not have data available..
           return readfile(G["home"] "apiclosed.json") # Return manufactured JSON with data values of 0
+      sleep(0.5, "unix")
       fp = sys2var(s)
       if(! empty(fp) && fp ~ "(schema|statistics|sitematrix)")
           return fp
-      sleep(2, "unix")
+      sleep(1.5, "unix")
   }
 
   email(Exe["from_email"], Exe["to_email"], "NUMBEROF COMPLETELY ABORTED ITS RUN because it failed to getpage(" s ")", "")
