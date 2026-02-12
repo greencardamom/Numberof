@@ -11,14 +11,18 @@ BEGIN { # Bot cfg
 
   _defaults = "home      = /home/greenc/toolforge/numberof/ \
                emailfp   = /home/greenc/toolforge/scripts/secrets/greenc.email \
+               userid    = User:GreenC \
                version   = 1.5 \
                copyright = 2025"
 
   asplit(G, _defaults, "[ ]*[=][ ]*", "[ ]{9,}")
   BotName = "numberof"
   Home = G["home"]
-  Agent = "User:GreenC_bot numberof BotWikiAwk" 
   Engine = 3
+
+  # Agent string format non-compliance could result in 429 (too many requests) rejections by WMF API
+  Agent = BotName "-" G["version"] "-" G["copyright"] " (" G["userid"] "; mailto:" strip(readfile(G["emailfp"])) ")"
+  
   G["email"] = strip(readfile(G["emailfp"]))
 
   G["datas"] = G["home"] "data.tab"
@@ -98,7 +102,7 @@ function t(n, r,i) {
 #
 function getpage(s,status,  fp,i) {
 
-  for(i = 1; i <= 50; i++) {
+  for(i = 1; i <= 30; i++) {
       if(i == 2 && status ~ "closed")          # If closed site MW API may not have data available..
           return readfile(G["home"] "apiclosed.json") # Return manufactured JSON with data values of 0
       sleep(0.5, "unix")
@@ -173,7 +177,7 @@ function dataconfig(datac,  a,i,s,sn,jsona,configfp,language,site,status,countof
   header = "language=string&project=string&status=string"
   jsonhead(desc, source, header, datac)
 
-  configfp = getpage(Exe["wget"] " --user-agent=" shquote(Agent) " -q -O- " shquote("https://en.wikipedia.org/w/api.php?action=sitematrix" G["apitail"]), "")
+  configfp = getpage(Exe["wget"] Wget_opts " -q -O- " shquote("https://en.wikipedia.org/w/api.php?action=sitematrix" G["apitail"]), "")
   if(query_json(configfp, jsona) >= 0) {
 
       for(i = 0; i <= jsona["sitematrix","count"]; i++) {
@@ -367,9 +371,9 @@ function datatab(data,  c,i,cfgfp,k,lang,site,status,statsfp,jsona,jsonb,stat,de
           status = jsona["data",k,"3"]
           if(lang == "total") continue
           if(site == "placeholder")  # maxlag problem for some sites. Placeholder means none ie. all are OK
-            statsfp = getpage(Exe["wget"] " --user-agent=" shquote(Agent) " -q -O- " shquote("https://" lang "." site ".org/w/api.php?action=query&meta=siteinfo&siprop=statistics" G["apitail2"]), status)
+            statsfp = getpage(Exe["wget"] Wget_opts " -q -O- " shquote("https://" lang "." site ".org/w/api.php?action=query&meta=siteinfo&siprop=statistics" G["apitail2"]), status)
           else
-            statsfp = getpage(Exe["wget"] " --user-agent=" shquote(Agent) " -q -O- " shquote("https://" lang "." site ".org/w/api.php?action=query&meta=siteinfo&siprop=statistics" G["apitail"]), status)
+            statsfp = getpage(Exe["wget"] Wget_opts " -q -O- " shquote("https://" lang "." site ".org/w/api.php?action=query&meta=siteinfo&siprop=statistics" G["apitail"]), status)
           if( query_json(statsfp, jsonb) >= 0) {
               printf t(2) "[\"" lang "." site "\"," >> data
               for(i = 1; i <= c; i++) { 
