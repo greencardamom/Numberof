@@ -79,7 +79,22 @@ BEGIN { # Bot run
     # See enwiki Template:NUMBEROF/conf
     # sys2var(Exe["cp"] " " shquote(G["datac"]) " " shquote("/data/project/botwikiawk/www/static/config.tab.json") )
 
+    healthcheckwatch()
+
 }
+
+#
+# https://github.com/greencardamom/HealthcheckWatch
+# acre:[/home/greenc/toolforge/healthcheckwatch]
+#
+function healthcheckwatch(  command) {
+
+  command = "/usr/bin/curl -s -X POST " shquote("https://healthcheckwatch.wbcqanjidyjcjbe.workers.dev/ping/acre-numberof") " -H " shquote("Authorization: Bearer Xn*izT%(^pI8J/q+Mn*ipT%(^pI9J/q") " -H " shquote("Content-Type: application/json") " -d " shquote("{ \"timeout\": 4, \"subject\": \"NOTIFY (HCW): numberof.awk\", \"body\": \"acre: /home/greenc/toolforge/numberof/numberof.awk (no response)\" }")
+  system(command)
+  exit
+
+}
+
 
 #
 # Currrent date/time in UTC
