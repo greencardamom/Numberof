@@ -84,17 +84,19 @@ BEGIN { # Bot run
 }
 
 #
-# https://github.com/greencardamom/HealthcheckWatch
-# acre:[/home/greenc/toolforge/healthcheckwatch]
+# Ping Healthcheckwatch API
 #
-function healthcheckwatch(  command) {
+# Git: https://github.com/greencardamom/HealthcheckWatch
+# Install: acre:[/home/greenc/toolforge/healthcheckwatch]
+# Library: ~/BotWikiAwk/lib/syscfg.awk
+# Wrapper: ~/scripts/healthcheckwatchping.sh
+#
+function healthcheckwatch() {
 
-  command = "/usr/bin/curl -s -X POST " shquote("https://healthcheckwatch.wbcqanjidyjcjbe.workers.dev/ping/acre-numberof") " -H " shquote("Authorization: Bearer Xn*izT%(^pI8J/q+Mn*ipT%(^pI9J/q") " -H " shquote("Content-Type: application/json") " -d " shquote("{ \"timeout\": 4, \"subject\": \"NOTIFY (HCW): numberof.awk\", \"body\": \"acre: /home/greenc/toolforge/numberof/numberof.awk (no response)\" }")
-  system(command)
+  hcw_ping("acre-numberof", 4, "NOTIFY (HCW): numberof.awk", "acre: /home/greenc/toolforge/numberof/numberof.awk (no response)")
   exit
 
 }
-
 
 #
 # Currrent date/time in UTC
