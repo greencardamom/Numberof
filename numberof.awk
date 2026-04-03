@@ -32,6 +32,8 @@ BEGIN { # Bot cfg
   G["apitail1"]  = "&format=json&formatversion=2&maxlag=4"
   G["apitail"] = "&format=json&formatversion=2"
 
+  Exe["wikiget"] = "/home/greenc/scripts/wikiget.awk"
+
   # 1-off special sites with no language sub-domains
   # eg. site www.wikidata is represented here as www=wikidata
   G["specials"] = "www=wikifunctions&www=wikidata&www=wikisource&meta=wikimedia&commons=wikimedia&incubator=wikimedia&foundation=wikimedia&wikimania=wikimedia&wikitech=wikimedia&donate=wikimedia&species=wikimedia&beta=wikiversity"
@@ -44,6 +46,17 @@ BEGIN { # Bot cfg
 
   # Set to 0 and it won't upload to Commons, for testing
   G["doupload"] = 1
+
+  G["botpassfp"] = "/home/greenc/toolforge/scripts/secrets/greencbot_botpass.txt"
+  G["initcache"] = G["home"] "initialized_wikis.txt"
+
+  # Load known wikis into memory so we don't re-initialize them
+  if (checkexists(G["initcache"])) {
+      while ((getline line < G["initcache"]) > 0) {
+          if (!empty(line)) InitCache[strip(line)] = 1
+      }
+      close(G["initcache"])
+  }
 
 }
 
@@ -115,23 +128,127 @@ function t(n, r,i) {
 }
 
 #
+# Auto-initialize new wikis via CentralAuth before OAuth queries them
+#
+function ensure_initialized(cmd_str,  domain, cmd, cookies, token, pass, secdir, success, maxlags, pauses, i, http_code) {
+    # Extract the domain from the wikiget command string
+    if (match(cmd_str, /https:\/\/([^/"'\\]+)/, m)) {
+        domain = m[1]
+        
+        # If we have never seen this wiki before...
+        if (!(domain in InitCache)) {
+            
+            # 1. Fetch the Global Skeleton Key only ONCE per script run
+            if (!("centralauth_cookies" in G)) {
+                print "\n[AUTO-INIT] [" domain "] Uncached wiki encountered. Triggering Skeleton Key fetch..." > "/dev/stderr"
+                
+                secdir = "/home/greenc/toolforge/scripts/secrets/"
+                
+                # Strip newline from password and safely dump it INSIDE the restricted directory
+                pass = strip(readfile(secdir "greencbot.password"))
+                printf "%s", pass > (secdir ".wmf_pass")
+                close(secdir ".wmf_pass")
+                
+                print "[AUTO-INIT] [" domain "] -> Requesting Meta-Wiki login token..." > "/dev/stderr"
+                cmd = "curl -L -m 15 -s -A " shquote(Agent) " -c /tmp/meta_cookie.txt \"https://meta.wikimedia.org/w/api.php?action=query&meta=tokens&type=login&format=json\" | jq -r .query.tokens.logintoken"
+                token = strip(sys2var(cmd))
+                printf "%s", token > (secdir ".wmf_token")
+                close(secdir ".wmf_token")
+                
+                print "[AUTO-INIT] [" domain "] -> POSTing credentials to Meta-Wiki..." > "/dev/stderr"
+                cmd = "curl -L -m 15 -A " shquote(Agent) " -s -b /tmp/meta_cookie.txt -c /tmp/meta_cookie.txt " \
+                      "--data-urlencode action=login " \
+                      "--data-urlencode \"lgname=GreenC bot\" " \
+                      "--data-urlencode lgpassword@" secdir ".wmf_pass " \
+                      "--data-urlencode lgtoken@" secdir ".wmf_token " \
+                      "--data-urlencode format=json " \
+                      "\"https://meta.wikimedia.org/w/api.php\" > /dev/null"
+                system(cmd)
+                
+                # Immediately destroy the temporary payload files
+                system("rm -f " secdir ".wmf_pass " secdir ".wmf_token")
+                
+                # Extract cookies bypassing cross-domain rules and save to memory
+                cmd = "awk '/centralauth/ {printf \"%s=%s; \", $6, $7}' /tmp/meta_cookie.txt"
+                G["centralauth_cookies"] = strip(sys2var(cmd))
+            }
+            
+            cookies = G["centralauth_cookies"]
+            
+            # 2. Use the Skeleton Key to unlock the local wiki
+            if (cookies != "") {
+                print "[AUTO-INIT] [" domain "] -> Key acquired. Unlocking local account..." > "/dev/stderr"
+                
+                success = 0
+                maxlags[1] = 10; pauses[1] = 12
+                maxlags[2] = 20; pauses[2] = 15
+                
+                for (i = 1; i <= 2; i++) {
+                    # Send payload, enforce 15s timeout, capture HTTP status
+                    cmd = "curl -L -m 15 -s -A " shquote(Agent) " -o /dev/null -w \"%{http_code}\" -H 'Cookie: " cookies "' \"https://" domain "/w/api.php?action=query&maxlag=" maxlags[i] "&meta=userinfo&format=json\""
+                    http_code = strip(sys2var(cmd))
+                    
+                    if (http_code == "200") {
+                        print "[AUTO-INIT] [" domain "] -> SUCCESS (HTTP 200). Added to cache." > "/dev/stderr"
+                        success = 1
+                        break
+                    } else if (http_code == "000") {
+                        print "[AUTO-INIT] [" domain "] -> Connection timed out or dropped. Backing off " pauses[i] "s..." > "/dev/stderr"
+                    } else {
+                        print "[AUTO-INIT] [" domain "] -> Blocked (HTTP " http_code "). Backing off " pauses[i] "s..." > "/dev/stderr"
+                    }
+                    
+                    sleep(pauses[i], "unix")
+                }
+                
+                if (success) {
+                    InitCache[domain] = 1
+                    print domain >> G["initcache"]
+                    close(G["initcache"])
+                    sleep(6, "unix") 
+                } else {
+                    print "[AUTO-INIT] [" domain "] -> CRITICAL: Abandoning after max retries." > "/dev/stderr"
+                }
+            } else {
+                print "[AUTO-INIT] [" domain "] -> ERROR: Meta-Wiki failed to return cookies. WMF might be hard-dropping us." > "/dev/stderr"
+            }
+        }
+    }
+}
+
+#
 # Abort and email if unable to retrieve page to avoid corrupting data.tab
 #
 function getpage(s,status,  fp,i) {
+    
+  # FAST FAIL: Instantly load dummy JSON for closed wikis.
+  # Do not let wikiget connect and trigger its internal retry loop.
+  #if(status ~ "closed") {
+  #    return readfile(G["home"] "apiclosed.json") 
+  #}
 
-  for(i = 1; i <= 30; i++) {
-      if(i == 2 && status ~ "closed")          # If closed site MW API may not have data available..
-          return readfile(G["home"] "apiclosed.json") # Return manufactured JSON with data values of 0
+  # --- CLOSED WIKI BYPASS ---
+  # Closed wikis cannot generate local OAuth accounts.
+  # Inject the -O flag to tell wikiget to fetch anonymously.
+  if(status ~ "closed") {
+      sub(Exe["wikiget"], Exe["wikiget"] " -O", s)
+  }
+    
+  # Automatically snowplow brand new active wikis before attempting OAuth!
+  ensure_initialized(s)
+    
+  for(i = 1; i <= 3; i++) {
       sleep(0.5, "unix")
       fp = sys2var(s)
-      if(! empty(fp) && fp ~ "(schema|statistics|sitematrix)")
+      
+      if(! empty(fp) && fp ~ /(schema|statistics|sitematrix)/)
           return fp
+          
       sleep(1.5, "unix")
   }
 
   email(Exe["from_email"], Exe["to_email"], "NUMBEROF COMPLETELY ABORTED ITS RUN because it failed to getpage(" s ")", "")
   exit
-
 }
 
 #
@@ -187,21 +304,28 @@ function jsonhead(description, sources, header, dataf,  c,i,a,b) {
 # Generate conf.tab
 #   see files sitematrix.json and sitematrix.awkjson for example layout
 #
-function dataconfig(datac,  a,i,s,sn,jsona,configfp,language,site,status,countofsites,desc,source,header,url,dtf,dtl,dtn) {
+function dataconfig(datac,  a,i,s,sn,jsona,configfp,language,site,print_lang,status,countofsites,desc,source,header,url,dtf,dtl,dtn) {
 
   desc   = "Meta statistics for Wikimedia projects. Last update: " currenttimeUTC() 
   source = "Data source: Calculated from [[:mw:API:Sitematrix]] and posted by [https://github.com/greencardamom/Numberof Numberof bot]. This page is generated automatically, manual changes will be overwritten."
   header = "language=string&project=string&status=string"
   jsonhead(desc, source, header, datac)
 
-  configfp = getpage(Exe["wget"] Wget_opts " -q -O- " shquote("https://en.wikipedia.org/w/api.php?action=sitematrix" G["apitail"]), "")
+  configfp = getpage(Exe["wikiget"] " -U " shquote("https://en.wikipedia.org/w/api.php?action=sitematrix" G["apitail"]), "")
+  
   if(query_json(configfp, jsona) >= 0) {
+
+      # --- SITEMATRIX SAFETY CATCH ---
+      # Prevents generating a corrupt datac.tab if Sitematrix returns a JSON error payload
+      if (jsona["error", "code"] != "") {
+          email(Exe["from_email"], Exe["to_email"], "ABORTED: Sitematrix API returned an error: " jsona["error", "code"], "")
+          exit
+      }
 
       for(i = 0; i <= jsona["sitematrix","count"]; i++) {
           language = jsona["sitematrix",i,"code"]
    
-          # For the below see https://meta.wikimedia.org/wiki/List_of_Wikipedias#Nonstandard_language_codes
-
+          # 1. Global Language Overrides (Applies to all sister projects)
           if(language == "be-x-old") language = "be-tarask"
           else if(language == "gsw") language = "als"
           else if(language == "lzh") language = "zh-classical"
@@ -215,14 +339,28 @@ function dataconfig(datac,  a,i,s,sn,jsona,configfp,language,site,status,countof
           if(!empty(language)) {
               countofsites = jsona["sitematrix",i,"site","0"]
 
-              # Some sites ("mo") have zero sites, skip
               if(countofsites > 0) {
                   for(sn = 1; sn <= countofsites; sn++) {
+                      
                       site = jsona["sitematrix",i,"site",sn,"code"]
+                      print_lang = language
+                      
+                      # 2. Site Normalization
                       if(site == "wiki") site = "wikipedia"
+                      
+                      # 3. Project-Specific Split-Brain Overrides
+                      if(print_lang == "zh-yue" && site == "wiktionary") {
+                          print_lang = "yue"
+                      }
+                      
+                      # 4. Status Check
                       status = "active"
-                      if(jsona["sitematrix",i,"site",sn,"closed"] == 1) status = "closed"
-                      print t(2) "[\"" language "\",\"" site "\",\"" status "\"]," >> datac
+                      if(jsona["sitematrix",i,"site",sn,"closed"] == 1) {
+                          status = "closed"
+                      }
+                      
+                      # 5. Output
+                      print t(2) "[\"" print_lang "\",\"" site "\",\"" status "\"]," >> datac
                   }
               }
           }
@@ -237,9 +375,8 @@ function dataconfig(datac,  a,i,s,sn,jsona,configfp,language,site,status,countof
           else print "" >> datac
       }
 
-  }
-  else {
-      email(Exe["from_email"], Exe["to_email"], "ABORTED: Numberof failed in dataconfig()", "")
+  } else {
+      email(Exe["from_email"], Exe["to_email"], "ABORTED: Numberof failed in dataconfig() (Failed to parse JSON)", "")
       exit
   }
 
@@ -253,24 +390,23 @@ function dataconfig(datac,  a,i,s,sn,jsona,configfp,language,site,status,countof
   print t(1) "]" >> datac
   print "}" >> datac
 
-  # print "\n\t]\n}" >> datac
   close(datac)
 
   dtf = readfile(datac)
   dtl = length(dtf)
   dtn = "datac.tab." dateeight() "." dtl
 
-  # Sanity check JSON sz to avoid corruption. Such as if API:SiteMatrix returns missing sites.
+  # Sanity check JSON sz to avoid corruption.
   if(int(dtl) < 30000) {
       email(Exe["from_email"], Exe["to_email"], "NUMBEROF FAILED - CORRUPTED datac.tab (" dtn ")", "")
       print dtf > dtn
       close(dtn)
-  }
-  else {
-      if(G["doupload"])
+  } else {
+      if(G["doupload"]) {
           upload(readfile(datac), "Data:Wikipedia statistics/meta.tab", "Update statistics", G["home"] "log", BotName, "commons", "wikimedia")
+      }
   }
-
+  
 }
 
 #
@@ -388,9 +524,9 @@ function datatab(data,  c,i,cfgfp,k,lang,site,status,statsfp,jsona,jsonb,stat,de
           status = jsona["data",k,"3"]
           if(lang == "total") continue
           if(site == "placeholder")  # maxlag problem for some sites. Placeholder means none ie. all are OK
-            statsfp = getpage(Exe["wget"] Wget_opts " -q -O- " shquote("https://" lang "." site ".org/w/api.php?action=query&meta=siteinfo&siprop=statistics" G["apitail2"]), status)
+            statsfp = getpage(Exe["wikiget"] " -U " shquote("https://" lang "." site ".org/w/api.php?action=query&meta=siteinfo&siprop=statistics" G["apitail2"]), status)
           else
-            statsfp = getpage(Exe["wget"] Wget_opts " -q -O- " shquote("https://" lang "." site ".org/w/api.php?action=query&meta=siteinfo&siprop=statistics" G["apitail"]), status)
+            statsfp = getpage(Exe["wikiget"] " -U " shquote("https://" lang "." site ".org/w/api.php?action=query&meta=siteinfo&siprop=statistics" G["apitail"]), status)
           if( query_json(statsfp, jsonb) >= 0) {
               printf t(2) "[\"" lang "." site "\"," >> data
               for(i = 1; i <= c; i++) { 
