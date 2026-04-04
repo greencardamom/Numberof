@@ -221,11 +221,6 @@ function ensure_initialized(cmd_str,  domain, cmd, cookies, token, pass, secdir,
 #
 function getpage(s,status,  fp,i) {
     
-  # FAST FAIL: Instantly load dummy JSON for closed wikis.
-  # Do not let wikiget connect and trigger its internal retry loop.
-  #if(status ~ "closed") {
-  #    return readfile(G["home"] "apiclosed.json") 
-  #}
 
   # --- CLOSED WIKI BYPASS ---
   # Closed wikis cannot generate local OAuth accounts.
