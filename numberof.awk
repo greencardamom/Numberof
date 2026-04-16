@@ -58,6 +58,7 @@ BEGIN { # Bot cfg
       close(G["initcache"])
   }
 
+
 }
 
 @include "botwiki"
