@@ -159,7 +159,7 @@ function ensure_initialized(cmd_str,  domain, cmd, cookies, token, pass, secdir,
                 print "[AUTO-INIT] [" domain "] -> POSTing credentials to Meta-Wiki..." > "/dev/stderr"
                 cmd = "curl -L -m 15 -A " shquote(Agent) " -s -b /tmp/meta_cookie.txt -c /tmp/meta_cookie.txt " \
                       "--data-urlencode action=login " \
-                      "--data-urlencode \"lgname=GreenC bot\" " \
+                      "--data-urlencode \"lgname=GreenC bot@GreenC_bot\" " \
                       "--data-urlencode lgpassword@" secdir ".wmf_pass " \
                       "--data-urlencode lgtoken@" secdir ".wmf_token " \
                       "--data-urlencode format=json " \
@@ -230,8 +230,7 @@ function getpage(s,status,  fp,i) {
       sub(Exe["wikiget"], Exe["wikiget"] " -O", s)
   }
     
-  # Automatically snowplow brand new active wikis before attempting OAuth!
-  ensure_initialized(s)
+  # ensure_initialized(s)  # disabled: WMF no longer issues centralauth_* cookies
     
   for(i = 1; i <= 3; i++) {
       sleep(0.5, "unix")
