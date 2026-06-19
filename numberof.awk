@@ -223,12 +223,17 @@ function ensure_initialized(cmd_str,  domain, cmd, cookies, token, pass, secdir,
 function getpage(s,status,  fp,i) {
     
 
-  # --- CLOSED WIKI BYPASS ---
-  # Closed wikis cannot generate local OAuth accounts.
-  # Inject the -O flag to tell wikiget to fetch anonymously.
-  if(status ~ "closed") {
-      sub(Exe["wikiget"], Exe["wikiget"] " -O", s)
-  }
+  # --- OAUTH MODE FOR PER-SITE READS ---
+  # Closed wikis cannot generate local OAuth accounts -> fetch anonymously (-O off).
+  # Newly-created/reserved wikis (eg. mag.wikipedia) are listed "active" in SiteMatrix but
+  # reject OAuth-signed reads because this account has no attached local login there yet.
+  # For per-site siteinfo statistics (public data) use -O soft: wikiget tries OAuth first
+  # (Varnish trust, fewer 429s/timeouts) and falls back to anonymous only if OAuth is rejected.
+  # Critical reads (SiteMatrix, config.tab, templates on en/commons) keep the default OAuth.
+  if(status ~ "closed")
+      sub(Exe["wikiget"], Exe["wikiget"] " -O off", s)
+  else if(s ~ /meta=siteinfo/)
+      sub(Exe["wikiget"], Exe["wikiget"] " -O soft", s)
     
   # ensure_initialized(s)  # disabled: WMF no longer issues centralauth_* cookies
     
@@ -242,6 +247,12 @@ function getpage(s,status,  fp,i) {
       sleep(1.5, "unix")
   }
 
+  # --- INTENTIONAL FAIL-LOUD ABORT — DO NOT "FIX" THIS INTO "SKIP AND CONTINUE" ---
+  # If a page still can't be retrieved after retries, abort the entire run and email.
+  # This is deliberate and is the MORE resilient behavior: a stale-but-valid table already
+  # on Commons is better than overwriting it with a corrupt/incomplete one. Failing loudly
+  # surfaces the real problem at its source (a new wiki, an API change, an auth break) so it
+  # can be fixed - rather than silently dropping sites and corrupting the published statistics.
   email(Exe["from_email"], Exe["to_email"], "NUMBEROF COMPLETELY ABORTED ITS RUN because it failed to getpage(" s ")", "")
   exit
 }
