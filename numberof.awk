@@ -19,6 +19,7 @@ BEGIN { # Bot cfg
   BotName = "numberof"
   Home = G["home"]
   Engine = 3
+  DiscoveredTimestamp = 1    # BotWikiAwk upload(): date-time each name in the "discovered" log
 
   # Agent string format non-compliance could result in 429 (too many requests) rejections by WMF API
   Agent = BotName "-" G["version"] "-" G["copyright"] " (" G["userid"] "; mailto:" strip(readfile(G["emailfp"])) ")"
